@@ -247,23 +247,26 @@ def run():
             f"Write a highly engaging article for Medium on the topic: '{topic}'.\n"
             f"Length: 800-1200 words.\n\n"
             f"CRITICAL PROMOTION REQUIREMENT:\n"
-            f"Do not blend the promotional link inside normal reading paragraphs. Instead, you must allocate a dedicated, standalone paragraph key exactly named \"p_cta\" right in the middle of the article content.\n"
+            f"Do not blend the promotional link inside normal reading paragraphs. Instead, you must allocate a dedicated, standalone paragraph key exactly named \"p_cta\" at a natural, contextually appropriate position roughly in the middle of the article flow.\n"
             f"The value of \"p_cta\" MUST be exactly formatted in this clean structure:\n"
             f"Click here to download this ebook: {promo_link}\n\n"
             f"OUTPUT FORMATTING:\n"
             f"You MUST deliver the entire article strictly inside a single JSON code block. No conversational text or markdown outside of it.\n"
-            f"The JSON structure must match this layout exactly:\n"
+            f"The JSON structure must match this layout exactly (the 'p_cta' key position is flexible but must be placed naturally between your content paragraphs):\n"
             f"{{\n"
             f'  "title": "{topic}",\n'
             f'  "p1": "Paragraph 1 content...",\n'
             f'  "p2": "Paragraph 2 content...",\n'
+            f'  ... \n'
             f'  "p_cta": "Click here to download this ebook: {promo_link}",\n'
-            f'  "p3": "Paragraph 3 content continuing the article flow...",\n'
             f'  ... \n'
             f'  "pn": "Paragraph n content...",\n'
-            f'  "conclusion": "Conclusion content..."\n'
+            f'  "conclusion": "Conclusion content...",\n'
+            f'  "keywords": ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]\n'
             f"}}\n"
-            f"REMINDER: The 'title' value must match exactly with: '{topic}'."
+            f"REMINDER 1: The 'title' value must match exactly with: '{topic}'.\n"
+            f"REMINDER 2: The 'keywords' array MUST contain strictly exactly 5 relevant keywords for the article.\n"
+            f"REMINDER 3: Place 'p_cta' dynamically where it naturally fits the narrative transition, do not force it strictly after paragraph 2."
         )
 
         print("[STEP] Entering prompt into textbox...", flush=True)

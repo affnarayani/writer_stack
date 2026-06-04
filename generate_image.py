@@ -144,6 +144,15 @@ def run():
 
     cookies = load_cookies(Path(CHATGPT_COOKIES_FILE))
 
+    # =========================
+    # LOAD ARTICLE DATA
+    # =========================
+    print("[STEP] Loading article JSON...", flush=True)
+    with open("article.json", "r", encoding="utf-8") as json_file:
+        article_data = json.load(json_file)
+    article_title = article_data.get("title", "Mental Clarity")
+    print(f"[OK] Article Title extracted: {article_title}", flush=True)
+
     print(f"[OK] Total cookies loaded: {len(cookies)}", flush=True)
 
     # =========================
@@ -196,7 +205,7 @@ def run():
             "minimalist concept art, or moody atmospheric scene — as long as it captures the emotional essence. "
             "Respond ONLY with the final optimized image prompt text. Do not include any introduction, explanation, or markdown.\n\n"
             "Article/eBook Topic Details:\n"
-            "Core Theme: Mental noise, overthinking, and the path to mental clarity\n"
+            f"Core Theme / Main Concept: {article_title}\n"
             "Key Ideas Covered:\n"
             "- Why the brain is constantly overwhelmed and distracted\n"
             "- The psychology of overthinking and mental clutter\n"
