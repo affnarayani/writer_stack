@@ -249,7 +249,7 @@ def run():
             f"CRITICAL PROMOTION REQUIREMENT:\n"
             f"Do not blend the promotional link inside normal reading paragraphs. Instead, you must allocate a dedicated, standalone paragraph key exactly named \"p_cta\" at a natural, contextually appropriate position roughly in the middle of the article flow.\n"
             f"The value of \"p_cta\" MUST be exactly formatted in this clean structure:\n"
-            f"Click here to download this ebook: {promo_link}\n\n"
+            f"Click Here to Download This Ebook: {promo_link}\n\n"
             f"OUTPUT FORMATTING:\n"
             f"You MUST deliver the entire article strictly inside a single JSON code block. No conversational text or markdown outside of it.\n"
             f"The JSON structure must match this layout exactly (the 'p_cta' key position is flexible but must be placed naturally between your content paragraphs):\n"
@@ -258,7 +258,7 @@ def run():
             f'  "p1": "Paragraph 1 content...",\n'
             f'  "p2": "Paragraph 2 content...",\n'
             f'  ... \n'
-            f'  "p_cta": "Click here to download this ebook: {promo_link}",\n'
+            f'  "p_cta": "Click Here to Download This Ebook: {promo_link}",\n'
             f'  ... \n'
             f'  "pn": "Paragraph n content...",\n'
             f'  "conclusion": "Conclusion content...",\n'
