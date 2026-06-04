@@ -69,6 +69,9 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          mkdir -p image
+          touch image/.gitkeep
           
           # Pull the latest remote origin mutations to strictly prevent tracking collisions
           git pull origin main
