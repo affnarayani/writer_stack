@@ -21,7 +21,7 @@ from playwright_stealth import Stealth
 # =========================
 # CONFIG
 # =========================
-HEADLESS = False
+HEADLESS = True
 
 MEDIUM_COOKIES_FILE = "medium_cookies.json.encrypted"
 ARTICLE_FILE = "article.json"
