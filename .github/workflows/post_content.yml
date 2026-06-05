@@ -1,7 +1,9 @@
 name: Generate Content and Post Medium
 
 on:
-  workflow_dispatch: # Kept strictly manual dispatch as requested
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */12 * * *'
 
 permissions:
   contents: write # Allows the runner to commit updated tracking files and manage image folders
