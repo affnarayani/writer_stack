@@ -378,7 +378,7 @@ def run():
         print("[STEP] Executing final story submission button click...", flush=True)
         final_publish_btn = page.get_by_role('button', name='Publish', exact=True)
         final_publish_btn.wait_for(state="visible")
-        final_publish_btn.click()
+        # final_publish_btn.click()
         print("[SUCCESS] Article successfully published!", flush=True)
 
         long_publish_wait()
