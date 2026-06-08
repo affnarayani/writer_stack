@@ -191,20 +191,6 @@ def run():
         )
         print("[OK] Medium URL opened completely (Logged In)", flush=True)
         custom_random_wait(6, 12)
-
-        # ==========================================
-        # NEW: LOGIN VERIFICATION CHECK
-        # ==========================================
-        print("[STEP] Verifying login status via User Icon...", flush=True)
-        user_icon = page.get_by_test_id('headerUserIcon')
-        
-        try:
-            # 15 seconds ka wait check lagaya hai taaki page load hone ka thoda time mile
-            user_icon.wait_for(state="visible", timeout=15000)
-            print("[OK] Login successful! User profile icon detected.", flush=True)
-        except Exception:
-            print("[CRITICAL ERROR] Login not successful! 'headerUserIcon' not found. Exiting process.", flush=True)
-            sys.exit(1)
         
         # =========================
         # EDITOR WORKFLOW
