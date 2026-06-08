@@ -31,6 +31,14 @@ jobs:
         run: |
           playwright install chromium --with-deps
 
+      - name: Install and Start Tor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tor
+          sudo systemctl start tor
+          # Give Tor enough time to build circuits and open port 9050
+          sleep 30
+
       - name: Create Environment File
         run: |
           echo "DECRYPT_KEY=${{ secrets.DECRYPT_KEY }}" > .env

@@ -169,6 +169,9 @@ def run():
             headless=HEADLESS,
             no_viewport=True,
             user_agent=USER_AGENT,
+            proxy={
+                "server": "socks5://127.0.0.1:9050"
+            },
             args=[
                 "--start-maximized",
                 "--disable-blink-features=AutomationControlled"
