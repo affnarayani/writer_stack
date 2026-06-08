@@ -188,6 +188,7 @@ def run():
             wait_until="domcontentloaded"
         )
         print("[OK] Medium URL opened completely", flush=True)
+        custom_random_wait(15, 30)
         
         # =========================
         # LOGIN VERIFICATION
