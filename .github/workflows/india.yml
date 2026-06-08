@@ -20,7 +20,7 @@ jobs:
       - name: Install System Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3-pip
+          sudo apt-get install -y python3-pip net-tools curl
 
       - name: Install Python Dependencies
         run: |
@@ -31,13 +31,22 @@ jobs:
         run: |
           playwright install chromium --with-deps
 
-      - name: Install and Start Tor
+      - name: Install, Start and Verify Tor
         run: |
-          sudo apt-get update
           sudo apt-get install -y tor
           sudo systemctl start tor
-          # Give Tor enough time to build circuits and open port 9050
-          sleep 30
+          echo "[TOR] Waiting for Tor to be ready on port 9050..."
+          # Retry loop to ensure Tor is fully listening
+          for i in {1..20}; do
+            if netstat -lnt | grep -q :9050; then
+              echo "[TOR] Connection established successfully!"
+              break
+            fi
+            sleep 5
+          done
+          # Final check to verify internet routing via Tor
+          echo "[TOR] Current Exit IP:"
+          curl --socks5-hostname 127.0.0.1:9050 https://checkip.amazonaws.com
 
       - name: Create Environment File
         run: |
