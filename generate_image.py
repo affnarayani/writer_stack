@@ -254,7 +254,7 @@ def run():
 
         page.goto(
             "https://chatgpt.com/",
-            wait_until="domcontentloaded"
+            wait_until="networkidle"
         )
 
         print("[OK] URL opened", flush=True)
