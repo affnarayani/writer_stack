@@ -42,6 +42,21 @@ jobs:
         run: |
           python clear_image_folder.py
 
+      # 6. Step 2: Fetch and format topic layout metadata into a structured article payload JSON file
+      - name: Run Generate Content Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+        run: |
+          python generate_content.py
+
+      # 7. Step 3: Parse content files, request AI prompt optimization and natively download premium hero image assets
+      - name: Run Generate Image Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python generate_image.py
+
       # 8. Step 4: Dispatch interactions to type copy, upload visual media, frame CTAs and launch live to Medium
       # Wrapped inside xvfb-run to seamlessly support the required HEADLESS = False parameter on cloud runners
       - name: Run Post Medium Script
