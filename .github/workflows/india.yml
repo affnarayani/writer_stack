@@ -1,0 +1,40 @@
+name: Run India Medium Automation
+
+on:
+  workflow_dispatch: # Only manual trigger enabled
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip
+
+      - name: Install Python Dependencies
+        run: |
+          pip install --upgrade pip
+          pip install playwright playwright-stealth cryptography python-dotenv
+
+      - name: Install Playwright Browsers & System Deps
+        run: |
+          playwright install chromium --with-deps
+
+      - name: Create Environment File
+        run: |
+          echo "DECRYPT_KEY=${{ secrets.DECRYPT_KEY }}" > .env
+
+      - name: Execute Automation Script
+        run: |
+          python india.py
