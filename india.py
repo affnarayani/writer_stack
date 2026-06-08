@@ -299,7 +299,7 @@ def run():
                 
                 print(f"[STEP] Clicking hyperlink action button...", flush=True)
                 link_btn = page.locator('button[data-action="link"]')
-                link_btn.wait_for(state="visible")
+                link_btn.wait_for(state="visible", timeout=30000)
                 link_btn.click()
                 custom_random_wait(3, 5)
                 
