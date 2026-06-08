@@ -215,7 +215,7 @@ def run():
         # 1. Title Input
         print("[STEP] Entering Title...", flush=True)
         title_para = page.get_by_test_id('editorTitleParagraph')
-        title_para.wait_for(state="visible")
+        title_para.wait_for(state="visible", timeout=15000)
         title_para.click()
         
         for char in article_title:
@@ -232,14 +232,14 @@ def run():
         # 2. Image Upload
         print("[STEP] Clicking Add Button for Image...", flush=True)
         add_btn = page.get_by_test_id('editorAddButton')
-        add_btn.wait_for(state="visible")
+        add_btn.wait_for(state="visible", timeout=15000)
         add_btn.click()
         print("[OK] Add button clicked", flush=True)
         custom_random_wait(6, 12)
 
         print("[STEP] Uploading Image...", flush=True)
         image_btn = page.get_by_role('button', name='Add an image', exact=True)
-        image_btn.wait_for(state="visible")
+        image_btn.wait_for(state="visible", timeout=15000)
 
         with page.expect_file_chooser() as fc_info:
             image_btn.click()
@@ -252,7 +252,7 @@ def run():
         # 3. Image Caption / Alt Text Input
         print("[STEP] Entering Image Caption...", flush=True)
         caption_element = page.get_by_text('Type caption for image (')
-        caption_element.wait_for(state="visible")
+        caption_element.wait_for(state="visible", timeout=15000)
         caption_element.click()
         custom_random_wait(6, 12)
         
@@ -299,13 +299,13 @@ def run():
                 
                 print(f"[STEP] Clicking hyperlink action button...", flush=True)
                 link_btn = page.locator('button[data-action="link"]')
-                link_btn.wait_for(state="visible")
+                link_btn.wait_for(state="visible", timeout=15000)
                 link_btn.click()
                 custom_random_wait(3, 5)
                 
                 print(f"[STEP] Filling URL into link input textbox...", flush=True)
                 link_input = page.get_by_role('textbox', name='Paste or type a link…')
-                link_input.wait_for(state="visible")
+                link_input.wait_for(state="visible", timeout=15000)
                 link_input.fill(target_url)
                 custom_random_wait(2, 4)
                 
@@ -343,7 +343,7 @@ def run():
         # 1. Click First Publish Button
         print("[STEP] Clicking primary 'Publish' drop-down button...", flush=True)
         publish_trigger = page.get_by_role('button', name='Publish', exact=True)
-        publish_trigger.wait_for(state="visible")
+        publish_trigger.wait_for(state="visible", timeout=15000)
         publish_trigger.click()
         print("[OK] Publish panel opened", flush=True)
         
@@ -353,7 +353,7 @@ def run():
         if chosen_keywords:
             print("[STEP] Locating 'Add a topic...' combobox input...", flush=True)
             topic_input = page.get_by_role('combobox', name='Add a topic...')
-            topic_input.wait_for(state="visible")
+            topic_input.wait_for(state="visible", timeout=15000)
             topic_input.click()
 
             for index, kw in enumerate(chosen_keywords, start=1):
@@ -377,7 +377,7 @@ def run():
         # 3. Click Final Publish Button
         print("[STEP] Executing final story submission button click...", flush=True)
         final_publish_btn = page.get_by_role('button', name='Publish', exact=True)
-        final_publish_btn.wait_for(state="visible")
+        final_publish_btn.wait_for(state="visible", timeout=15000)
         # final_publish_btn.click()
         print("[SUCCESS] Article successfully published!", flush=True)
 
