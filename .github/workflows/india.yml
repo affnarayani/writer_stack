@@ -38,7 +38,7 @@ jobs:
           echo "[TOR] Waiting for Tor to be ready on port 9050..."
           
           # Retry loop to ensure Tor is fully listening
-          for i in {1..10}; do
+          for i in {1..30}; do
             if netstat -lnt | grep -q :9050; then
               echo "[TOR] Port 9050 is open!"
               break
@@ -46,9 +46,9 @@ jobs:
             sleep 5
           done
           
-          # FIXED: Added --max-time (10s) and --retry flags to prevent hanging
+          # FIXED: Added --max-time (30s) and --retry flags to prevent hanging
           echo "[TOR] Verifying internet connection through Tor..."
-          curl --socks5-hostname 127.0.0.1:9050 --max-time 10 --retry 3 https://checkip.amazonaws.com || echo "[TOR] Warning: IP check failed, proceeding anyway..."
+          curl --socks5-hostname 127.0.0.1:9050 --max-time 30 --retry 3 https://checkip.amazonaws.com || echo "[TOR] Warning: IP check failed, proceeding anyway..."
 
       - name: Create Environment File
         run: |
