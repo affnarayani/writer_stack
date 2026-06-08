@@ -252,7 +252,7 @@ def run():
         # 3. Image Caption / Alt Text Input
         print("[STEP] Entering Image Caption...", flush=True)
         caption_element = page.get_by_text('Type caption for image (')
-        caption_element.wait_for(state="visible", timeout=30000)
+        caption_element.wait_for(state="visible", timeout=120000)
         caption_element.click()
         custom_random_wait(6, 12)
         
