@@ -282,46 +282,30 @@ def run():
                 display_text = parts[0].strip().rstrip(":")
                 target_url = "http" + parts[1].strip()
                 
-                # Step 1: Type display text
                 for char in display_text:
                     page.keyboard.type(char)
                     time.sleep(random.uniform(0.03, 0.12))
                 
                 custom_random_wait(2, 4)
                 
-                # Step 2: Cursor ko line ke start pe le jao, phir sirf is line ko select karo
-                # Control+A se POORA page select hota tha — Medium toolbar tab disabled rehta hai
-                print(f"[STEP] Moving cursor to line start...", flush=True)
-                page.keyboard.press("Home")
-                time.sleep(random.uniform(0.3, 0.6))
+                print(f"[STEP] Selecting text for embedding hyperlink...", flush=True)
+                page.keyboard.down("Shift")
+                for _ in range(len(display_text)):
+                    page.keyboard.press("ArrowLeft")
+                    time.sleep(0.02)
+                page.keyboard.up("Shift")
                 
-                print(f"[STEP] Selecting current line text via Shift+End...", flush=True)
-                page.keyboard.press("Shift+End")
                 custom_random_wait(2, 4)
                 
-                # Step 3: Floating toolbar ke enable hone ka wait
-                print(f"[STEP] Waiting for floating toolbar to activate...", flush=True)
-                time.sleep(2)
-                
-                # Step 4: Link button click
                 print(f"[STEP] Clicking hyperlink action button...", flush=True)
                 link_btn = page.locator('button[data-action="link"]')
-                link_btn.wait_for(state="visible", timeout=15000)
-                
-                # Enabled hone ka explicitly wait karo (disabled="disabled" fix)
-                print(f"[STEP] Waiting for link button to become enabled...", flush=True)
-                page.wait_for_function(
-                    "document.querySelector('button[data-action=\"link\"]')?.disabled === false",
-                    timeout=10000
-                )
-                
+                link_btn.wait_for(state="visible")
                 link_btn.click()
                 custom_random_wait(3, 5)
                 
-                # Step 5: URL fill karo
                 print(f"[STEP] Filling URL into link input textbox...", flush=True)
                 link_input = page.get_by_role('textbox', name='Paste or type a link…')
-                link_input.wait_for(state="visible", timeout=15000)
+                link_input.wait_for(state="visible")
                 link_input.fill(target_url)
                 custom_random_wait(2, 4)
                 
