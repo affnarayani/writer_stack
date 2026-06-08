@@ -1,4 +1,4 @@
-name: Generate Content and Post Medium
+name: Generate C
 
 on:
   workflow_dispatch:
