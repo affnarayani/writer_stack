@@ -1,89 +1,152 @@
-name: Generate Content and Post Substack
+name: Run Substack Auto Publisher
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: '0 */12 * * *'
+  workflow_dispatch: # Taaki aap zaroorat padne par manually bhi run kar sakein # Raat ke 2:00 baje (IST) automatic run karne ke liye cron schedule
 
-permissions:
-  contents: write # Runner ko changes commit aur push karne ki permission deta hai
-
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  
 jobs:
-  run-automation:
-    runs-on: ubuntu-latest
+  run-script:
+    runs-on: ubuntu-latest # Linux container fast aur efficient chalta hai
 
     steps:
-      # 1. Repository ko checkout karna standard fallback mechanism ke saath
-      - name: Checkout Repository
+      # 1. Repository ka code checkout karna (Yeh step aapki text files ko runner mein laayega)
+      - name: Checkout repository code
         uses: actions/checkout@v5
-        with:
-          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
 
-      # 2. State collision se bachne ke liye workflow chalne se pehle hi remote changes pull karna
-      - name: Pull Latest Changes
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git pull origin main
-
-      # 3. Python environment setup pip cache support ke saath
+      # 2. Python Environment setup karna
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      # 4. Core Python requirements ko install karna
-      - name: Install Dependencies
+      # 3. 🟢 SMART RANDOM-SELECT VPN STEP (With Automatic Fallback)
+      - name: Install and Connect OpenVPN (Randomized Config Loader)
+        env:
+          VPN_USER: ${{ secrets.VPN_USERNAME }}
+          VPN_PASS: ${{ secrets.VPN_PASSWORD }}
+        run: |
+          set +e
+          export DEBIAN_FRONTEND=noninteractive
+          
+          # Ubuntu ke triggers block karna taaki apt installation fast ho
+          sudo dpkg-divert --local --rename --add /usr/sbin/policy-rc.d
+          echo "exit 101" | sudo tee /usr/sbin/policy-rc.d
+          sudo chmod +x /usr/sbin/policy-rc.d
+          
+          sudo apt-get remove --purge -y needrestart
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends openvpn
+          
+          sudo rm -f /usr/sbin/policy-rc.d || true
+          
+          # 🎲 RANDOM FILE SELECTION MECHANISM
+          # ovpn folder ke andar maujood sabhi .txt files ko ek array mein lena
+          FILES=(ovpn/ovpn_*.txt)
+          
+          # Agar folder khali ho ya files na milein
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "[ERROR] No OVPN text files found in 'ovpn/' directory!"
+            exit 1
+          fi
+          
+          # Array se ek random index chunna
+          RANDOM_INDEX=$(( RANDOM % ${#FILES[@]} ))
+          SELECTED_FILE=${FILES[$RANDOM_INDEX]}
+          echo "[INFO] Randomly selected VPN Config: $SELECTED_FILE"
+          
+          # Selected text file ko main client.ovpn mein copy karna
+          cat "$SELECTED_FILE" > client.ovpn
+          
+          # Credentials file banana
+          echo -e "$VPN_USER\n$VPN_PASS" > credentials.txt
+          chmod 600 credentials.txt
+          
+          # 💡 CLEANUP CONFIG TO PREVENT HANGS
+          sed -i '/update-resolv-conf/d' client.ovpn
+          sed -i 's/resolv-retry infinite/resolv-retry 2/g' client.ovpn
+          sed -i 's/auth-user-pass.*/auth-user-pass credentials.txt/g' client.ovpn
+          
+          echo "[INFO] Starting OpenVPN in background daemon mode..."
+          sudo openvpn --config client.ovpn --log openvpn.log --daemon
+          
+          set -e
+          
+          # VPN tunnel active hone ke liye wait karna
+          echo "[WAIT] Waiting 20 seconds for VPN tunnel..."
+          sleep 20
+          
+          # Logs check karna aur fallback check lagana
+          echo "--- OpenVPN Init Logs ---"
+          sudo tail -n 15 openvpn.log || true
+          
+          # Verify karna ki public IP badla ya nahi
+          echo "[INFO] Checking Public IP Status..."
+          if curl -s --max-time 10 https://ifconfig.me; then
+            echo -e "\n[SUCCESS] VPN Connected Successfully!"
+          else
+            echo -e "\n[WARNING] First choice failed or timed out. Trying a different random config as fallback..."
+            # 🔄 FALLBACK: Agar pehli file fail hui, toh doosri random file try karega
+            NEW_INDEX=$(( (RANDOM_INDEX + 1) % ${#FILES[@]} ))
+            SELECTED_FILE=${FILES[$NEW_INDEX]}
+            echo "[INFO] Fallback selected VPN Config: $SELECTED_FILE"
+            
+            sudo killall openvpn || true
+            cat "$SELECTED_FILE" > client.ovpn
+            sed -i '/update-resolv-conf/d' client.ovpn
+            sed -i 's/resolv-retry infinite/resolv-retry 2/g' client.ovpn
+            sed -i 's/auth-user-pass.*/auth-user-pass credentials.txt/g' client.ovpn
+            
+            sudo openvpn --config client.ovpn --log openvpn.log --daemon
+            sleep 20
+            sudo tail -n 15 openvpn.log || true
+            curl -s --max-time 10 https://ifconfig.me || echo "Proceeding with current network route..."
+          fi
+
+      # 4. Playwright Persistent User Data ko cache se restore karna
+      - name: Restore Playwright Persistent Context Cache
+        uses: actions/cache@v4
+        with:
+          path: stack_user_data
+          key: ${{ runner.os }}-playwright-session-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-session-
+
+      # 5. Python Packages/Dependencies install karna
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install playwright playwright-stealth python-dotenv cryptography
 
-      # 5. Playwright browser binaries aur system level dependencies install karna
-      - name: Install Playwright and System Dependencies
+      # 6. Playwright ke Chromium browser aur uski system dependencies install karna
+      - name: Install Playwright Chromium and system dependencies
         run: |
-          python -m playwright install --with-deps chromium
+          playwright install chromium --with-deps
 
-      # 6. STEP 1: Text content generate karna aur article.json update karna
-      - name: Run Generate Content Script
+      # 7. Script ko run karna aur Environment Secret paas karna
+      - name: Execute Automation Script
         env:
           DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
         run: |
-          python generate_content.py
+          python post_article.py
 
-      # 7. STEP 2: AI image prompt optimize karke hero image asset download karna
-      - name: Run Generate Image Script
-        env:
-          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python generate_image.py
+      # 8. Agar script fail hoti hai, toh error screenshot ko upload karna
+      - name: Upload Error Screenshot if script fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: substack-error-screenshot
+          path: error_screenshot.png
+          retention-days: 7
 
-      # 8. STEP 3: Substack par automation ke throgh post, link injection aur tag submit karna
-      # Headless runner par GUI handling ke liye xvfb-run wrap kiya gaya hai
-      - name: Run Post Substack Script
-        env:
-          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+      # 9. Agar script successful ho, to use wapas GitHub par commit karna
+      - name: Commit and Push updated article.json
+        if: success()
         run: |
-          xvfb-run --auto-servernum python post_article.py
-
-      # 9. Operational files (topics.txt, article.json) aur image directory ko persist karke push karna
-      - name: Commit and Push Any Changes
-        run: |
-          # Ensure image directory exists and has a .gitkeep file
-          mkdir -p image
-          touch image/.gitkeep
-          
-          # Fir se final sync ke liye pull karna agar concurrency window ho
-          git pull origin main
-          
-          # Saare tracked aur untracked state adjustments add karna (-A)
-          git add -A
-          
-          # Empty commit errors se bachne ke liye diff check karna
-          if git diff --staged --quiet; then
-            echo "No operational data changes, topic updates, or assets found to commit."
-          else
-            git commit -m "chore: automated content generation, media downloads, and substack publishing cycle [skip ci]"
-            git push origin main
-          fi
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add article.json
+          git diff-index --quiet HEAD || git commit -m "chore: mark article as posted [skip ci]"
+          git push

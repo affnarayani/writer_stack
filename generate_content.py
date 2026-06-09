@@ -180,6 +180,23 @@ def run():
 
     # File init/clear at the beginning
     article_file = Path("article.json")
+
+    # ============================================
+    # NEW: CHECK IF CONTENT IS ALREADY POSTED
+    # ============================================
+    if article_file.exists():
+        try:
+            with article_file.open("r", encoding="utf-8") as f:
+                content = f.read().strip()
+                if content:  # Check if file is not empty
+                    data = json.loads(content)
+                    if data.get("posted") is True:
+                        print("[INFO] Content has already been posted. Aborting process.", flush=True)
+                        sys.exit(0)
+        except json.JSONDecodeError:
+            # Agar JSON invalid hai toh ignore karke aage badhenge taaki nayi file overwrite ho sake
+            print("[WARNING] 'article.json' contains invalid JSON. Proceeding to overwrite...", flush=True)
+    
     with article_file.open("w", encoding="utf-8") as f:
         f.write("")
     print("[OK] 'article.json' cleared/initialized", flush=True)
