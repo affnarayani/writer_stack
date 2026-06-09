@@ -369,7 +369,7 @@ def run():
                 
             except Exception as download_err:
                 print(f"❌ Error during 'Save' button download processing: {download_err}", flush=True)
-                
+                sys.exit(1)
             # Close shared page tab
             shared_page.close()
         else:
