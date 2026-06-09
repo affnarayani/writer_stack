@@ -352,7 +352,7 @@ def run():
             
             # Intercept download event loop
             try:
-                save_btn = shared_page.get_by_role('button', name='Save').first
+                save_btn = shared_page.get_by_role('button', name='Save').first.or_(shared_page.get_by_role('button', name='Save'))
                 
                 # Setup download watcher to capture file stream natively
                 with shared_page.expect_download(timeout=60000) as download_info:
