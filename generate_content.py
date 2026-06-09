@@ -32,8 +32,6 @@ if not encrypted_files:
 CHATGPT_COOKIES_FILE = random.choice(encrypted_files)
 print(f"[OK] Randomly selected cookie file: {CHATGPT_COOKIES_FILE.name}", flush=True)
 
-USER_DATA_DIR = "stack_user_data"  # 🟢 Persistent context folder path linked here
-
 PBKDF2_ITERATIONS = 200_000
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
@@ -183,6 +181,9 @@ def run():
     # File init/clear at the beginning
     article_file = Path("article.json")
 
+    # ============================================
+    # NEW: CHECK IF CONTENT IS ALREADY POSTED
+    # ============================================
     if article_file.exists():
         try:
             with article_file.open("r", encoding="utf-8") as f:
@@ -193,12 +194,14 @@ def run():
                         print("[INFO] Content has already been posted. Aborting process.", flush=True)
                         sys.exit(0)
         except json.JSONDecodeError:
+            # Agar JSON invalid hai toh ignore karke aage badhenge taaki nayi file overwrite ho sake
             print("[WARNING] 'article.json' contains invalid JSON. Proceeding to overwrite...", flush=True)
     
     with article_file.open("w", encoding="utf-8") as f:
         f.write("")
     print("[OK] 'article.json' cleared/initialized", flush=True)
 
+    # Get topic and promo link
     try:
         topic = get_last_topic()
         promo_link = get_random_promo_link()
@@ -209,23 +212,24 @@ def run():
     cookies = load_cookies(Path(CHATGPT_COOKIES_FILE))
     print(f"[OK] Total cookies loaded: {len(cookies)}", flush=True)
 
-    # ============================================
-    # STEALTH SETUP & PERSISTENT CONTEXT LAUNCH
-    # ============================================
+    # =========================
+    # STEALTH SETUP & LOGIN
+    # =========================
     stealth = Stealth()
     pw_cm = stealth.use_sync(sync_playwright())
     pw = pw_cm.__enter__()
 
-    page = None
+    browser = None
     try:
-        # 🟢 Naye code ki tarah launch_persistent_context ko browser ki jagah directly run kiya gaya hai
-        context = pw.chromium.launch_persistent_context(
-            user_data_dir=USER_DATA_DIR,
+        browser = pw.chromium.launch(
             headless=HEADLESS,
             args=[
                 "--start-maximized",
                 "--disable-blink-features=AutomationControlled"
-            ],
+            ]
+        )
+
+        context = browser.new_context(
             no_viewport=True,
             user_agent=USER_AGENT
         )
@@ -248,9 +252,10 @@ def run():
         custom_random_wait(30, 60)
 
         # ============================================
-        # CHECK LOGIN SUCCESS VIA USER PROFILE BUTTON
+        # NEW: CHECK LOGIN SUCCESS VIA USER PROFILE BUTTON
         # ============================================
         print("[STEP] Checking login success via profile button...", flush=True)
+        # Matches any user name followed by 'Free, open'
         profile_button = page.get_by_role('button', name=list(map(lambda x: x.compile(r'.*Free, open'), [__import__('re')]))[0])
         
         if profile_button.count() > 0:
@@ -263,16 +268,18 @@ def run():
         # =========================
         print("[STEP] Locating chat textbox...", flush=True)
         
-        # Priority Fallback Selector Setup
-        textbox = page.locator('#prompt-textarea')
+        # Fallback Strategy for Textbox Locators
+        textbox = page.get_by_role('textbox', name='Chat with ChatGPT')
         
         if textbox.count() == 0:
-            textbox = page.get_by_role('textbox', name='Chat with ChatGPT')
-        
-        if textbox.count() == 0:
-            print("[INFO] Fallback: Searching for 'Ask anything' paragraph inside textbox context...", flush=True)
+            print("[INFO] Fallback 1: Searching for 'Ask anything' paragraph inside textbox context...", flush=True)
             textbox = page.locator('div[contenteditable="true"]').filter(has=page.locator('p', has_text='Ask anything')).first
+            
+        if textbox.count() == 0:
+            print("[INFO] Fallback 2: Searching via CSS Selector '#prompt-textarea'...", flush=True)
+            textbox = page.locator('#prompt-textarea')
 
+        # Trigger action if found
         if textbox.count() > 0:
             textbox.first.click()
             print("[OK] Textbox located and clicked successfully.", flush=True)
@@ -281,6 +288,7 @@ def run():
             
         custom_random_wait(15, 30)
 
+        # Smart prompt engineering with specific separate paragraph format requirements
         prompt = (
             f"IMPORTANT: Your entire response must be wrapped in a single ```json code block. "
             f"STRICTLY: Do not print any JSON outside of a code block under any circumstances. "
@@ -326,6 +334,7 @@ def run():
         send_button = page.get_by_test_id('send-button')
         send_button.click()
         
+        # Initial wait taaki generation properly start ho sake
         custom_random_wait(30, 60)
 
         # ============================================
@@ -342,9 +351,10 @@ def run():
                 print("[OK] Code block visible, parsing live text size variations...", flush=True)
                 
                 last_length = 0
-                max_check_cycles = 15
+                max_check_cycles = 15  # 15 cycles * 15 seconds = Lagbhag 3.7 minutes max wait per attempt
                 
                 for cycle in range(max_check_cycles):
+                    # 15 seconds ka explicit sleep har state capture ke beech me
                     time.sleep(15)
                     
                     current_text = code_block_locator.first.inner_text().strip()
@@ -352,7 +362,9 @@ def run():
                     
                     print(f"[STREAM INFO] Cycle {cycle+1}: Previous Length = {last_length}, Current Length = {current_length}", flush=True)
                     
+                    # Agar text pichle 15 seconds me 1 char bhi nahi badha aur text khali nahi hai
                     if current_length > 0 and current_length == last_length:
+                        # Check text ki end JSON complete bracket `}` par ho rahi hai ya nahi
                         if current_text.endswith("}"):
                             json_content = current_text
                             print("[OK] Content generation is fully finished and finalized.", flush=True)
@@ -371,7 +383,7 @@ def run():
             else:
                 print("❌ Max retries reached. Streaming complete nahi ho payi. Exiting script...", flush=True)
                 try:
-                    context.close()
+                    browser.close()
                 except:
                     pass
                 sys.exit(1)
@@ -386,6 +398,8 @@ def run():
                     json_content = json_content.rsplit("```", 1)[0]
                 
                 parsed_json = json.loads(json_content.strip())
+                
+                # Title sync check
                 parsed_json["title"] = topic
                 
                 print("[STEP] Saving to article.json...", flush=True)
@@ -393,23 +407,25 @@ def run():
                     json.dump(parsed_json, f, indent=4, ensure_ascii=False)
                 print("[OK] Article successfully saved with embedded promo link to article.json", flush=True)
                 
+                # Success validation achieved: Safe to remove topic now
                 remove_last_topic_from_file()
                 
             except json.JSONDecodeError as je:
                 print(f"[ERROR] Content JSON parse karne me fail hua: {je}. Exiting script...", flush=True)
                 try:
-                    context.close()
+                    browser.close()
                 except:
                     pass
                 sys.exit(1)
         else:
             print("[ERROR] Save skip kiya gaya kyunki koi data fetch nahi hua. Exiting script...", flush=True)
             try:
-                context.close()
+                browser.close()
             except:
                 pass
             sys.exit(1)
 
+        # 15 to 30 seconds random wait before closing the browser normally
         print("[STEP] Performing random wait before normal browser closure...", flush=True)
         custom_random_wait(15, 30)
 
@@ -417,24 +433,28 @@ def run():
         raise
     except Exception as e:
         print("[ERROR]", e, flush=True)
-        if page is not None:
+        # ============================================
+        # NEW: CAPTURE SCREENSHOT ON ERROR
+        # ============================================
+        if 'page' in locals() and page:
             try:
                 screenshot_path = "error_screenshot.png"
                 page.screenshot(path=screenshot_path, full_page=True)
                 print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
             except Exception as screenshot_err:
                 print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
-        if context:
+        # ============================================
+        if browser:
             try:
-                context.close()
+                browser.close()
             except:
                 pass
         sys.exit(1)
 
     finally:
-        if 'context' in locals() and context:
+        if browser:
             try:
-                context.close()
+                browser.close()
             except:
                 pass
 
