@@ -21,36 +21,23 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3. 🟢 PERMANENTLY FIXED VPN STEP (Bypassing Ubuntu needrestart strict rule)
-      - name: Install and Connect OpenVPN (Direct Linux Command)
+      # 3. 🟢 ULTRA-ROBUST VPN STEP (No apt-get install, uses pre-installed OpenVPN)
+      - name: Connect OpenVPN (Direct Linux Command)
         env:
           OVPN_DATA: ${{ secrets.OPVN_CONFIG_DATA }}
         run: |
-          # 1. Non-interactive frontend force karna
-          export DEBIAN_FRONTEND=noninteractive
-          
-          # 2. 🔥 NEEDRESTART KO PURE RUN KE LIYE AUTOMATIC/SILENT MODE PAR SET KARNA
-          # Yeh line Ubuntu ko bolegi ki agar koi service restart ka menu aaye toh chupchaap bina prompt ke use ignore/auto-handle kare
-          sudo sed -i "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/g" /etc/needrestart/needrestart.conf || true
-          
-          # 3. OpenVPN aur systemd-resolved install karna safely
-          sudo apt-get update -y
-          sudo apt-get install -y \
-            -o Dpkg::Options::="--force-confdef" \
-            -o Dpkg::Options::="--force-confold" \
-            openvpn openvpn-systemd-resolved
-          
-          # 4. Secret se .ovpn data lekar file banana
+          # Secret se .ovpn data lekar file banana
           echo "$OVPN_DATA" > client.ovpn
           
-          # 5. OpenVPN ko core privileges ke sath background daemon state mein call karna
+          # GitHub runner par openvpn pehle se installed hota hai, seedhe daemon start karenge
+          # Isse needrestart trigger hi nahi hoga!
           sudo openvpn --config client.ovpn --log openvpn.log --daemon
           
-          # 6. VPN tunnel (tun0) active hone ke liye 20 seconds ka wait karna
+          # VPN tunnel (tun0) active hone ke liye 20 seconds ka wait karna
           echo "[WAIT] Waiting for VPN connection to establish..."
           sleep 20
           
-          # 7. Verify karna ki public IP badla ya nahi
+          # Verify karna ki public IP badla ya nahi
           echo "[INFO] Current Public IP is:"
           curl -s --max-time 10 https://ifconfig.me || echo "Could not fetch IP, routing active. Checking status..."
           
