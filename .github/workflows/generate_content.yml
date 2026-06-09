@@ -38,21 +38,25 @@ jobs:
         echo "[OK] Article is not posted yet or fresh run. Proceeding with content generation..."
 
     - name: Configure Git
+      if: steps.check_status.outputs.should_skip != 'true'
       run: |
         git config --global user.name "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
     - name: Pull Latest Changes (Maintain Persistence)
+      if: steps.check_status.outputs.should_skip != 'true'
       run: |
         git pull origin ${GITHUB_REF_NAME} --rebase
 
     - name: Install Dependencies
+      if: steps.check_status.outputs.should_skip != 'true'
       run: |
         python -m pip install --upgrade pip
         pip install playwright playwright-stealth cryptography python-dotenv
         playwright install chromium --with-deps
 
     - name: Run Script
+      if: steps.check_status.outputs.should_skip != 'true'
       env:
         DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }} # GitHub Repository Secrets mein DECRYPT_KEY add karna mat bhoolna
       run: |
@@ -67,6 +71,7 @@ jobs:
         if-no-files-found: ignore
 
     - name: Commit and Push Changes (If updated)
+      if: steps.check_status.outputs.should_skip != 'true'
       run: |
         # Check karega ki article.json ya topics.txt mein koi change hua hai ya nahi
         git add article.json topics.txt
