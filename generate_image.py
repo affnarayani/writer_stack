@@ -263,13 +263,41 @@ def run():
         print("[STEP] Performing initial random wait (30-60 seconds)...", flush=True)
         custom_random_wait(30, 60)
 
-        # 2. Locate chat box and type prompt
+        # ============================================
+        # NEW: CHECK LOGIN SUCCESS VIA USER PROFILE BUTTON
+        # ============================================
+        print("[STEP] Checking login success via profile button...", flush=True)
+        profile_button = page.get_by_role('button', name=list(map(lambda x: x.compile(r'.*Free, open'), [__import__('re')]))[0])
+        
+        if profile_button.count() > 0:
+            print(f"[OK] LOGIN SUCCESS: Profile button found -> '{profile_button.first.get_attribute('aria-label') or 'User Account'}'", flush=True)
+        else:
+            print("[WARNING] Profile button not detected directly, proceeding with caution...", flush=True)
+
+        # ============================================
+        # 2. Locate chat box and type prompt (With Fallbacks)
+        # ============================================
         print("[STEP] Locating chat textbox...", flush=True)
         chat_box = page.get_by_role('textbox', name='Chat with ChatGPT')
         
+        if chat_box.count() == 0:
+            print("[INFO] Fallback 1: Searching for 'Ask anything' paragraph inside textbox context...", flush=True)
+            chat_box = page.locator('div[contenteditable="true"]').filter(has=page.locator('p', has_text='Ask anything')).first
+            
+        if chat_box.count() == 0:
+            print("[INFO] Fallback 2: Searching via CSS Selector '#prompt-textarea'...", flush=True)
+            chat_box = page.locator('#prompt-textarea')
+
+        # Trigger action if found
+        if chat_box.count() > 0:
+            chat_box.first.click()
+            print("[OK] Textbox located and clicked successfully.", flush=True)
+        else:
+            raise RuntimeError("❌ Textbox locator load nahi ho paya (All strategies failed).")
+
         prompt_text = f"Generate a photorealistic or artistic editorial image with a size strictly of 1672x941 px at a 16:9 aspect ratio. The image should serve as a compelling Medium article header — no text, no overlays, no book covers. Depict the following scene in high detail and cinematic quality: {hf_generated_prompt}"
         print(f"[STEP] Filling prompt: '{prompt_text}'", flush=True)
-        chat_box.fill(prompt_text)
+        chat_box.first.fill(prompt_text)
         
         page.keyboard.press("Enter")
         print("[OK] Prompt sent successfully", flush=True)

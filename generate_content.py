@@ -128,7 +128,7 @@ def get_last_topic() -> str:
     
     with topics_file.open("r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
-        
+    
     if not lines:
         raise ValueError("❌ 'topics.txt' khali hai.")
     
@@ -234,12 +234,41 @@ def run():
         # 15 to 30 seconds random wait after page load
         custom_random_wait(30, 60)
 
+        # ============================================
+        # NEW: CHECK LOGIN SUCCESS VIA USER PROFILE BUTTON
+        # ============================================
+        print("[STEP] Checking login success via profile button...", flush=True)
+        # Matches any user name followed by 'Free, open'
+        profile_button = page.get_by_role('button', name=list(map(lambda x: x.compile(r'.*Free, open'), [__import__('re')]))[0])
+        
+        if profile_button.count() > 0:
+            print(f"[OK] LOGIN SUCCESS: Profile button found -> '{profile_button.first.get_attribute('aria-label') or 'User Account'}'", flush=True)
+        else:
+            print("[WARNING] Profile button not detected directly, proceeding with caution...", flush=True)
+
         # =========================
         # AUTOMATION FLOW
         # =========================
         print("[STEP] Locating chat textbox...", flush=True)
+        
+        # Fallback Strategy for Textbox Locators
         textbox = page.get_by_role('textbox', name='Chat with ChatGPT')
-        textbox.click()
+        
+        if textbox.count() == 0:
+            print("[INFO] Fallback 1: Searching for 'Ask anything' paragraph inside textbox context...", flush=True)
+            textbox = page.locator('div[contenteditable="true"]').filter(has=page.locator('p', has_text='Ask anything')).first
+            
+        if textbox.count() == 0:
+            print("[INFO] Fallback 2: Searching via CSS Selector '#prompt-textarea'...", flush=True)
+            textbox = page.locator('#prompt-textarea')
+
+        # Trigger action if found
+        if textbox.count() > 0:
+            textbox.first.click()
+            print("[OK] Textbox located and clicked successfully.", flush=True)
+        else:
+            raise RuntimeError("❌ Textbox locator load nahi ho paya (All strategies failed).")
+            
         custom_random_wait(15, 30)
 
         # Smart prompt engineering with specific separate paragraph format requirements
@@ -281,7 +310,7 @@ def run():
         )
 
         print("[STEP] Entering prompt into textbox...", flush=True)
-        textbox.fill(prompt)
+        textbox.first.fill(prompt)
         custom_random_wait(15, 30)
 
         print("[STEP] Locating and clicking send button...", flush=True)
