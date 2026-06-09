@@ -27,6 +27,15 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Pull Latest Changes (Maintain Persistence)
+        run: |
+          git pull origin ${GITHUB_REF_NAME} --rebase
+
       # 3. 🟢 SMART RANDOM-SELECT VPN STEP (With Automatic Fallback)
       - name: Install and Connect OpenVPN (Randomized Config Loader)
         env:
