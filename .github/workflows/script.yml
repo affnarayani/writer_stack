@@ -1,12 +1,7 @@
 name: Run Substack Auto Publisher
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch: # Isse aap manually bhi GitHub panel se run kar sakte hain
-  # schedule:
-  #   - cron: '0 12 * * *' # Agar roz chalana ho to isko uncomment kar dein
 
 jobs:
   run-script:
@@ -40,7 +35,7 @@ jobs:
         env:
           DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }} # GitHub Secrets se key uthayega
         run: |
-          python main.py # Yahan apne file ka sahi naam likhein (agar script ka naam alag hai)
+          python post_article.py
 
       # 6. Agar script article.json ko 'posted: true' mark karta hai, to use wapas GitHub par commit karna
       - name: Commit and Push updated article.json
