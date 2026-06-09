@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest # Linux container fast aur efficient chalta hai
 
     steps:
-      # 1. Repository ka code checkout karna
+      # 1. Repository ka code checkout karna (Yeh step aapki text files ko runner mein laayega)
       - name: Checkout repository code
         uses: actions/checkout@v4
 
@@ -24,10 +24,9 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3. 🟢 FULLY OPTIMIZED NON-BLOCKING VPN STEP
-      - name: Install and Connect OpenVPN
+      # 3. 🟢 SMART RANDOM-SELECT VPN STEP (With Automatic Fallback)
+      - name: Install and Connect OpenVPN (Randomized Config Loader)
         env:
-          OVPN_DATA: ${{ secrets.OPVN_CONFIG_DATA }}
           VPN_USER: ${{ secrets.VPN_USERNAME }}
           VPN_PASS: ${{ secrets.VPN_PASSWORD }}
         run: |
@@ -45,36 +44,68 @@ jobs:
           
           sudo rm -f /usr/sbin/policy-rc.d || true
           
-          # Config aur Credentials files banana
-          echo "$OVPN_DATA" > client.ovpn
+          # 🎲 RANDOM FILE SELECTION MECHANISM
+          # ovpn folder ke andar maujood sabhi .txt files ko ek array mein lena
+          FILES=(ovpn/ovpn_*.txt)
+          
+          # Agar folder khali ho ya files na milein
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "[ERROR] No OVPN text files found in 'ovpn/' directory!"
+            exit 1
+          fi
+          
+          # Array se ek random index chunna
+          RANDOM_INDEX=$(( RANDOM % ${#FILES[@]} ))
+          SELECTED_FILE=${FILES[$RANDOM_INDEX]}
+          echo "[INFO] Randomly selected VPN Config: $SELECTED_FILE"
+          
+          # Selected text file ko main client.ovpn mein copy karna
+          cat "$SELECTED_FILE" > client.ovpn
+          
+          # Credentials file banana
           echo -e "$VPN_USER\n$VPN_PASS" > credentials.txt
           chmod 600 credentials.txt
           
-          # 💡 CLEANUP CONFIG TO PREVENT HANGS:
-          # Hang hone wale automatic DNS scripts aur infinite retry ko file se remove karna
+          # 💡 CLEANUP CONFIG TO PREVENT HANGS
           sed -i '/update-resolv-conf/d' client.ovpn
           sed -i 's/resolv-retry infinite/resolv-retry 2/g' client.ovpn
-          
-          # Credentials link karna
           sed -i 's/auth-user-pass.*/auth-user-pass credentials.txt/g' client.ovpn
           
           echo "[INFO] Starting OpenVPN in background daemon mode..."
-          # `--daemon` flag ke sath run karna taaki yeh background mein chala jaye aur terminal block na ho
           sudo openvpn --config client.ovpn --log openvpn.log --daemon
           
           set -e
           
-          # VPN tunnel (tun0) active hone ke liye 20 seconds ka wait karenge
+          # VPN tunnel active hone ke liye wait karna
           echo "[WAIT] Waiting 20 seconds for VPN tunnel..."
           sleep 20
           
-          # Logs check karna ki connect hua ya error aaya
+          # Logs check karna aur fallback check lagana
           echo "--- OpenVPN Init Logs ---"
           sudo tail -n 15 openvpn.log || true
           
-          # Verify karna ki public IP badla ya nahi (Max time 10s taaki hang na ho)
+          # Verify karna ki public IP badla ya nahi
           echo "[INFO] Checking Public IP Status..."
-          curl -s --max-time 10 https://ifconfig.me || echo "Could not fetch IP, proceeding with routing..."
+          if curl -s --max-time 10 https://ifconfig.me; then
+            echo -e "\n[SUCCESS] VPN Connected Successfully!"
+          else
+            echo -e "\n[WARNING] First choice failed or timed out. Trying a different random config as fallback..."
+            # 🔄 FALLBACK: Agar pehli file fail hui, toh doosri random file try karega
+            NEW_INDEX=$(( (RANDOM_INDEX + 1) % ${#FILES[@]} ))
+            SELECTED_FILE=${FILES[$NEW_INDEX]}
+            echo "[INFO] Fallback selected VPN Config: $SELECTED_FILE"
+            
+            sudo killall openvpn || true
+            cat "$SELECTED_FILE" > client.ovpn
+            sed -i '/update-resolv-conf/d' client.ovpn
+            sed -i 's/resolv-retry infinite/resolv-retry 2/g' client.ovpn
+            sed -i 's/auth-user-pass.*/auth-user-pass credentials.txt/g' client.ovpn
+            
+            sudo openvpn --config client.ovpn --log openvpn.log --daemon
+            sleep 20
+            sudo tail -n 15 openvpn.log || true
+            curl -s --max-time 10 https://ifconfig.me || echo "Proceeding with current network route..."
+          fi
 
       # 4. Playwright Persistent User Data ko cache se restore karna
       - name: Restore Playwright Persistent Context Cache
