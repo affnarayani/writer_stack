@@ -238,7 +238,7 @@ def run():
         # AUTOMATION FLOW
         # =========================
         print("[STEP] Locating chat textbox...", flush=True)
-        textbox = page.get_by_role('textbox', name='Chat with ChatGPT', timeout=30000)
+        textbox = page.get_by_role('textbox', name='Chat with ChatGPT')
         textbox.click()
         custom_random_wait(15, 30)
 

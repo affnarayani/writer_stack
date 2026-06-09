@@ -255,7 +255,7 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
         print("[STEP] Opening ChatGPT Main URL...", flush=True)
         page.goto(
             "https://chatgpt.com/",
-            wait_until="domcontentloaded"
+            wait_until="load"
         )
         print("[OK] URL opened successfully (Logged In)", flush=True)
 
