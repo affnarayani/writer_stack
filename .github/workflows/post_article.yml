@@ -26,6 +26,20 @@ jobs:
         with:
           python-version: '3.11'
           cache: 'pip'
+      
+      # 2.1 NEW: EARLY EXIT CHECK (Yeh pure workflow ko fuzool chalne se rokega)    
+      - name: Check if article is already posted
+        id: check_status
+        run: |
+          if [ -f "article.json" ]; then
+            # jq tool se json ke andar 'posted' key check karna
+            POSTED_STATUS=$(jq -r '.posted' article.json)
+            if [ "$POSTED_STATUS" = "true" ]; then
+              echo "[INFO] Article has already been posted! Exiting workflow early to save time."
+              exit 0
+            fi
+          fi
+          echo "[OK] Article is not posted yet. Proceeding with full pipeline..."
 
       # 3. 🟢 SMART RANDOM-SELECT VPN STEP (With Automatic Fallback)
       - name: Install and Connect OpenVPN (Randomized Config Loader)

@@ -24,6 +24,19 @@ jobs:
       with:
         python-version: '3.11' # Aapki library requirements ke liye optimal hai
 
+    - name: Check if article is already posted
+      id: check_status
+      run: |
+        if [ -f "article.json" ]; then
+          # jq tool se check karenge ki 'posted' key true hai ya nahi
+          POSTED_STATUS=$(jq -r '.posted' article.json)
+          if [ "$POSTED_STATUS" = "true" ]; then
+            echo "[INFO] Article has already been posted! Skipping content generation to save API credits."
+            exit 0
+          fi
+        fi
+        echo "[OK] Article is not posted yet or fresh run. Proceeding with content generation..."
+
     - name: Configure Git
       run: |
         git config --global user.name "github-actions[bot]"
