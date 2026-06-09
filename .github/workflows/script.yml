@@ -21,28 +21,35 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3. 🟢 BULLETPROOF VPN STEP (Bina kisi third-party action ke, pure Linux commands)
+      # 3. 🟢 FIXED BULLETPROOF VPN STEP (Bypassing interactive system prompts)
       - name: Install and Connect OpenVPN (Direct Linux Command)
         env:
           OVPN_DATA: ${{ secrets.OPVN_CONFIG_DATA }}
         run: |
-          # OpenVPN install karna
-          sudo apt-get update
-          sudo apt-get install -y openvpn openvpn-systemd-resolved
+          # Interactivity band karna taaki systemd upgrade warnings automatic bypass ho jayein
+          export DEBIAN_FRONTEND=noninteractive
+          
+          # System repositories update karna aur openvpn setup karna safely
+          sudo apt-get update -y
+          sudo apt-get install -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" openvpn openvpn-systemd-resolved
           
           # Secret se .ovpn data lekar file banana
           echo "$OVPN_DATA" > client.ovpn
           
-          # OpenVPN ko background mein chalu karna
-          sudo openvpn --config client.ovpn --daemon
+          # OpenVPN ko core privileges ke sath background daemon state mein call karna
+          sudo openvpn --config client.ovpn --log openvpn.log --daemon
           
-          # VPN tunnel (tun0) active hone ke liye 15 seconds ka wait karna
+          # VPN tunnel (tun0) active hone ke liye 20 seconds ka wait karna
           echo "[WAIT] Waiting for VPN connection to establish..."
-          sleep 15
+          sleep 20
           
-          # Ek baar verify karna ki public IP badla ya nahi
+          # Ek baar verify karna ki public IP badla ya nahi aur connectivity check karna
           echo "[INFO] Current Public IP is:"
-          curl -s https://ifconfig.me || echo "Could not fetch IP, checking connection..."
+          curl -s --max-time 10 https://ifconfig.me || echo "Could not fetch IP, routing active. Checking status..."
+          
+          # Logs display in case debug stream is needed
+          echo "--- OpenVPN Init Logs ---"
+          sudo tail -n 20 openvpn.log || true
 
       # 4. Playwright Persistent User Data ko cache se restore karna
       - name: Restore Playwright Persistent Context Cache
