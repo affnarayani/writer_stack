@@ -45,6 +45,14 @@ jobs:
       run: |
         python generate_content.py
 
+    - name: Upload Error Screenshot
+      if: failure() # Yeh step sirf tabhi chalega jab upar wala step fail hoga
+      uses: actions/upload-artifact@v4
+      with:
+        name: playright-error-screenshot
+        path: error_screenshot.png
+        if-no-files-found: ignore
+
     - name: Commit and Push Changes (If updated)
       run: |
         # Check karega ki article.json ya topics.txt mein koi change hua hai ya nahi

@@ -46,6 +46,14 @@ jobs:
       run: |
         python generate_image.py
 
+    - name: Upload Error Screenshot
+      if: failure() # Yeh step sirf tabhi chalega jab upar wala step fail hoga
+      uses: actions/upload-artifact@v4
+      with:
+        name: playright-error-screenshot
+        path: error_screenshot.png
+        if-no-files-found: ignore
+
     - name: Commit and Push Generated Image (If downloaded)
       run: |
         # Check karega ki image/pin.png create ya update hui hai ya nahi
