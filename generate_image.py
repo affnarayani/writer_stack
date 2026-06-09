@@ -380,6 +380,28 @@ def run():
         # Pop-up load hone ke liye chhota sa wait
         custom_random_wait(15, 30)
 
+        # ========================================================
+        # MODIFIED: POPUP DOWNLOAD CHECK LOGIC
+        # ========================================================
+        try:
+            popup_download_btn = page.get_by_role('button', name='Download').first
+            if popup_download_btn.is_visible():
+                print("✅ 'Download' button found inside the Copy Link pop-up! Initiating download...", flush=True)
+                with page.expect_download(timeout=60000) as download_info:
+                    popup_download_btn.click()
+                
+                download = download_info.value
+                local_filename = IMAGE_DIR / "pin.png"
+                download.save_as(local_filename)
+                print(f"✅ Original resolution image downloaded from pop-up successfully: {local_filename}", flush=True)
+                
+                print("[STEP] Performing final random wait before exit (30-60 seconds)...", flush=True)
+                custom_random_wait(30, 60)
+                print("[DONE] Kahaani Khatam! Downloaded directly from pop-up.", flush=True)
+                return
+        except Exception as popup_dl_err:
+            print(f"[INFO] Pop-up direct download failed or not found, continuing with link copy: {popup_dl_err}", flush=True)
+
         # HACK: Agar 'Copy link' button wala pop-up aata hai toh uspar click karega
         try:
             copy_link_btn = page.get_by_role('button', name='Copy link').first

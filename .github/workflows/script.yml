@@ -1,0 +1,54 @@
+name: Run Substack Auto Publisher
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: # Isse aap manually bhi GitHub panel se run kar sakte hain
+  # schedule:
+  #   - cron: '0 12 * * *' # Agar roz chalana ho to isko uncomment kar dein
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Repository ka code checkout karna
+      - name: Checkout repository code
+        uses: actions/checkout@v5
+
+      # 2. Python Environment setup karna
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11' # Aapki choice ke mutabik version (e.g., 3.10, 3.11)
+          cache: 'pip' # Dependencies cache karne ke liye taaki next run fast ho
+
+      # 3. Python Packages/Dependencies install karna
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright playwright-stealth python-dotenv cryptography
+
+      # 4. Playwright ke Chromium browser aur uski system dependencies install karna
+      - name: Install Playwright Webkit/Chromium and dependencies
+        run: |
+          playwright install chromium --with-deps
+
+      # 5. Script ko run karna aur Environment Secret paas karna
+      - name: Execute Automation Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }} # GitHub Secrets se key uthayega
+        run: |
+          python main.py # Yahan apne file ka sahi naam likhein (agar script ka naam alag hai)
+
+      # 6. Agar script article.json ko 'posted: true' mark karta hai, to use wapas GitHub par commit karna
+      - name: Commit and Push updated article.json
+        if: success() # Sirf tabhi chalega agar upar wala step success ho
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add article.json
+          # Check check karega ki kuch badla hai ya nahi, tabhi commit karega
+          git diff-index --quiet HEAD || git commit -m "chore: mark article as posted [skip ci]"
+          git push
