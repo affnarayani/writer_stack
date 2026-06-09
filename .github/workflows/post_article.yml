@@ -1,0 +1,89 @@
+name: Generate Content and Post Substack
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */12 * * *'
+
+permissions:
+  contents: write # Runner ko changes commit aur push karne ki permission deta hai
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Repository ko checkout karna standard fallback mechanism ke saath
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+
+      # 2. State collision se bachne ke liye workflow chalne se pehle hi remote changes pull karna
+      - name: Pull Latest Changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin main
+
+      # 3. Python environment setup pip cache support ke saath
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # 4. Core Python requirements ko install karna
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 5. Playwright browser binaries aur system level dependencies install karna
+      - name: Install Playwright and System Dependencies
+        run: |
+          python -m playwright install --with-deps chromium
+
+      # 6. STEP 1: Text content generate karna aur article.json update karna
+      - name: Run Generate Content Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+        run: |
+          python generate_content.py
+
+      # 7. STEP 2: AI image prompt optimize karke hero image asset download karna
+      - name: Run Generate Image Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python generate_image.py
+
+      # 8. STEP 3: Substack par automation ke throgh post, link injection aur tag submit karna
+      # Headless runner par GUI handling ke liye xvfb-run wrap kiya gaya hai
+      - name: Run Post Substack Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+        run: |
+          xvfb-run --auto-servernum python post_article.py
+
+      # 9. Operational files (topics.txt, article.json) aur image directory ko persist karke push karna
+      - name: Commit and Push Any Changes
+        run: |
+          # Ensure image directory exists and has a .gitkeep file
+          mkdir -p image
+          touch image/.gitkeep
+          
+          # Fir se final sync ke liye pull karna agar concurrency window ho
+          git pull origin main
+          
+          # Saare tracked aur untracked state adjustments add karna (-A)
+          git add -A
+          
+          # Empty commit errors se bachne ke liye diff check karna
+          if git diff --staged --quiet; then
+            echo "No operational data changes, topic updates, or assets found to commit."
+          else
+            git commit -m "chore: automated content generation, media downloads, and substack publishing cycle [skip ci]"
+            git push origin main
+          fi
