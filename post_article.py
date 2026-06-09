@@ -195,7 +195,7 @@ def run():
 
         print("[STEP] Opening Substack URL to check login...", flush=True)
         page.goto("https://substack.com/", wait_until="load")
-        custom_random_wait(4, 8)
+        custom_random_wait(30, 60)
 
         # 1. Login Verification via Profile Button
         print("[STEP] Checking if Profile button exists...", flush=True)
