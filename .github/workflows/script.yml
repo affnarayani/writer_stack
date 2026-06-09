@@ -1,7 +1,10 @@
 name: Run Substack Auto Publisher
 
 on:
-  workflow_dispatch: # Isse aap manually bhi GitHub panel se run kar sakte hain
+  push:
+    branches:
+      - main # 💡 Ab jab bhi aap main branch par 'git push' karenge, yeh automatic chalega!
+  workflow_dispatch: # Taaki aap zaroorat padne par manually bhi run kar sakein
   schedule:
     - cron: '30 20 * * *' # Raat ke 2:00 baje (IST) automatic run karne ke liye cron schedule
 
@@ -21,20 +24,19 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3. 🟢 ULTRA-ROBUST VPN STEP (Completely Purging Needrestart)
-      - name: Install and Connect OpenVPN (Anti-Needrestart Fix)
+      # 3. 🟢 ROBUST VPN STEP (With push bypass and warning suppressors)
+      - name: Install and Connect OpenVPN (Ignore Trigger Errors)
         env:
           OVPN_DATA: ${{ secrets.OPVN_CONFIG_DATA }}
         run: |
           export DEBIAN_FRONTEND=noninteractive
           
-          # 🔥 Jadd se khatam: Needrestart package ko hi system se remove aur purge kar dena
-          echo "[FIX] Purging needrestart utility to avoid exit code 1..."
+          # Needrestart ko remove karna
           sudo apt-get remove --purge -y needrestart || true
           
-          # Safely update aur sirf openvpn core install karna
+          # Safely OpenVPN install karna aur trigger error ko || true se bypass karna
           sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends openvpn
+          sudo apt-get install -y --no-install-recommends openvpn || true
           
           # Secret se .ovpn data lekar file banana
           echo "$OVPN_DATA" > client.ovpn
