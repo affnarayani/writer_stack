@@ -173,6 +173,9 @@ def run():
     pw_cm = stealth.use_sync(sync_playwright())
     pw = pw_cm.__enter__()
 
+    # Variable scope handle karne ke liye page ko pehle hi declare kar diya
+    page = None
+
     try:
         # launch_persistent_context ka use karke context directly launch kiya gaya hai browser launch karne ki jagah
         context = pw.chromium.launch_persistent_context(
@@ -460,6 +463,13 @@ def run():
         raise
     except Exception as e:
         print("[ERROR] Script execution broke down due to trace:", e, flush=True)
+        # 🟢 SCREENSHOT CORE LOGIC INJECTED HERE
+        if page is not None:
+            try:
+                page.screenshot(path="error_screenshot.png", full_page=True)
+                print("[OK] Error screenshot saved to error_screenshot.png", flush=True)
+            except Exception as screenshot_err:
+                print(f"[WARNING] Could not take screenshot: {screenshot_err}", flush=True)
         sys.exit(1)
 
     finally:
