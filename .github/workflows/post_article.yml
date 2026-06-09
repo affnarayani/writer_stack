@@ -1,7 +1,11 @@
-name: Run Substack Auto Publisher
+name: Post Article
 
 on:
-  workflow_dispatch: # Taaki aap zaroorat padne par manually bhi run kar sakein # Raat ke 2:00 baje (IST) automatic run karne ke liye cron schedule
+  workflow_dispatch: # Taaki aap zaroorat padne par manually bhi run kar sakein
+  workflow_run:
+    workflows: ["Generate Image"] # Jab 'Generate Image' workflow khatam hoga tab trigger hoga
+    types:
+      - completed
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -9,6 +13,7 @@ env:
 jobs:
   run-script:
     runs-on: ubuntu-latest # Linux container fast aur efficient chalta hai
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       # 1. Repository ka code checkout karna (Yeh step aapki text files ko runner mein laayega)
@@ -149,4 +154,4 @@ jobs:
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add article.json
           git diff-index --quiet HEAD || git commit -m "chore: mark article as posted [skip ci]"
-          git push
+          git push origin ${GITHUB_REF_NAME}
