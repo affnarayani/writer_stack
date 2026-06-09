@@ -21,7 +21,7 @@ from playwright_stealth import Stealth
 # =========================
 # CONFIG
 # =========================
-HEADLESS = True
+HEADLESS = False
 
 STACK_COOKIES_FILE = "stack_cookies.json.encrypted"
 ARTICLE_FILE = "article.json"
@@ -198,11 +198,11 @@ def run():
         custom_random_wait(30, 60)
 
         # 1. Login Verification via Profile Button
-        # print("[STEP] Checking if Profile button exists...", flush=True)
-        # profile_btn = page.get_by_role('button', name='Profile').or_(page.locator("a[aria-label='Profile']"))
-        # profile_btn.wait_for(state="visible", timeout=60000)
-        # print("[OK] Profile button found! Login Successful.", flush=True)
-        # custom_random_wait(3, 6)
+        print("[STEP] Checking if Profile button exists...", flush=True)
+        profile_btn = page.get_by_role('button', name='Profile').or_(page.locator("a[aria-label='Profile']"))
+        profile_btn.wait_for(state="visible", timeout=60000)
+        print("[OK] Profile button found! Login Successful.", flush=True)
+        custom_random_wait(3, 6)
 
         # 2. Navigate to Publish Post URL
         post_url = "https://mindtobetter.substack.com/publish/post/"
