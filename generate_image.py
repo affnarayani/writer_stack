@@ -314,6 +314,34 @@ def run():
             print("❌ Error: 'Share this image' button not found after 5 retries. Exiting program.", flush=True)
             sys.exit(1)
 
+        # ========================================================
+        # IMPLEMENTATION: DIRECT DOWNLOAD CHECK LOGIC
+        # ========================================================
+        print("[STEP] Checking if direct 'Download' button is available on main page...", flush=True)
+        direct_download_btn = page.get_by_role('button', name='Download').first
+        
+        if direct_download_btn.is_visible():
+            print("✅ Direct 'Download' button found! Initiating direct download...", flush=True)
+            try:
+                with page.expect_download(timeout=60000) as download_info:
+                    direct_download_btn.click()
+                
+                download = download_info.value
+                local_filename = IMAGE_DIR / "pin.png"
+                download.save_as(local_filename)
+                print(f"✅ Original resolution image downloaded directly (Saved to image directory): {local_filename}", flush=True)
+                
+                print("[STEP] Performing final random wait before exit (30-60 seconds)...", flush=True)
+                custom_random_wait(30, 60)
+                print("[DONE] Kahaani Khatam! Direct download successfully processed.", flush=True)
+                return  # Direct skip complete workflow and finish script cleanly
+                
+            except Exception as direct_dl_err:
+                print(f"[WARNING] Direct download triggered error, falling back to new tab loop: {direct_dl_err}", flush=True)
+
+        # Fallback to old flow if direct button isn't visible or failed
+        print("[INFO] Moving forward with fallback workflow (New Tab Method)...", flush=True)
+
         # Clear clipboard
         page.evaluate("() => navigator.clipboard.writeText('')")
 
