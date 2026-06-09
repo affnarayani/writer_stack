@@ -110,14 +110,7 @@ jobs:
             curl -s --max-time 10 https://ifconfig.me || echo "Proceeding with current network route..."
           fi
 
-      # 4. Playwright Persistent User Data ko cache se restore karna
-      - name: Restore Playwright Persistent Context Cache
-        uses: actions/cache@v4
-        with:
-          path: stack_user_data
-          key: ${{ runner.os }}-playwright-session-${{ github.run_id }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-session-
+
 
       # 5. Python Packages/Dependencies install karna
       - name: Install dependencies
