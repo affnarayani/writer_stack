@@ -265,7 +265,7 @@ def run():
 
         # 2. Locate chat box and type prompt
         print("[STEP] Locating chat textbox...", flush=True)
-        chat_box = page.get_by_role('textbox', name='Chat with ChatGPT')
+        chat_box = page.get_by_role('textbox', name='Chat with ChatGPT', timeout=30000)
         
         prompt_text = f"Generate a photorealistic or artistic editorial image with a size strictly of 1672x941 px at a 16:9 aspect ratio. The image should serve as a compelling Medium article header — no text, no overlays, no book covers. Depict the following scene in high detail and cinematic quality: {hf_generated_prompt}"
         print(f"[STEP] Filling prompt: '{prompt_text}'", flush=True)
