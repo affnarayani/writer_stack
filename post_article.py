@@ -194,7 +194,7 @@ def run():
         print("[OK] Cookies added successfully", flush=True)
 
         print("[STEP] Opening Substack URL to check login...", flush=True)
-        page.goto("https://substack.com/", wait_until="networkidle")
+        page.goto("https://substack.com/", wait_until="load")
         custom_random_wait(4, 8)
 
         # 1. Login Verification via Profile Button
@@ -207,7 +207,7 @@ def run():
         # 2. Navigate to Publish Post URL
         post_url = "https://mindtobetter.substack.com/publish/post/"
         print(f"[STEP] Navigating to editor URL: {post_url}", flush=True)
-        page.goto(post_url, wait_until="networkidle")
+        page.goto(post_url, wait_until="load")
         custom_random_wait(6, 12)
 
         # =========================

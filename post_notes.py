@@ -211,7 +211,7 @@ def run():
         print("[STEP] Opening Substack URL...", flush=True)
         page.goto(
             "https://mindtobetter.substack.com/publish/home",
-            wait_until="networkidle"
+            wait_until="load"
         )
         print("[OK] Substack URL opened completely (Logged In)", flush=True)
         custom_random_wait(6, 12)
