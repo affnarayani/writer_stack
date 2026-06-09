@@ -5,7 +5,7 @@ on:
 
 jobs:
   run-script:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest # Yahan Ubuntu ki jagah Windows set kar diya hai
 
     steps:
       # 1. Repository ka code checkout karna
@@ -16,17 +16,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11' # Aapki choice ke mutabik version (e.g., 3.10, 3.11)
-          cache: 'pip' # Dependencies cache karne ke liye taaki next run fast ho
+          python-version: '3.11'
+          cache: 'pip'
 
-      # 2.5 Playwright Persistent User Data ko cache se restore karna
+      # 2.5 Playwright Persistent User Data ko cache se restore karna (Windows Specific)
       - name: Restore Playwright Persistent Context Cache
         uses: actions/cache@v4
         with:
           path: stack_user_data
-          # 'key' match hone par purana data download hoga, nahi toh naya context banega
           key: ${{ runner.os }}-playwright-session-${{ github.run_id }}
-          # Agar exact key na mile, toh pichle kisi bhi session ka data utha lega (Persistence core logic)
           restore-keys: |
             ${{ runner.os }}-playwright-session-
 
@@ -36,25 +34,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install playwright playwright-stealth python-dotenv cryptography
 
-      # 4. Playwright ke Chromium browser aur uski system dependencies install karna
-      - name: Install Playwright Webkit/Chromium and dependencies
+      # 4. Playwright ke Chromium browser ko install karna
+      - name: Install Playwright Chromium
         run: |
-          playwright install chromium --with-deps
+          playwright install chromium
 
       # 5. Script ko run karna aur Environment Secret paas karna
       - name: Execute Automation Script
         env:
-          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }} # GitHub Secrets se key uthayega
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
         run: |
           python post_article.py
 
-      # 6. Agar script article.json ko 'posted: true' mark karta hai, to use wapas GitHub par commit karna
+      # 6. Agar script article.json ko update karta hai, to use wapas GitHub par commit karna
       - name: Commit and Push updated article.json
-        if: success() # Sirf tabhi chalega agar upar wala step success ho
+        if: success()
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add article.json
-          # Check karega ki kuch badla hai ya nahi, tabhi commit karega
           git diff-index --quiet HEAD || git commit -m "chore: mark article as posted [skip ci]"
           git push
