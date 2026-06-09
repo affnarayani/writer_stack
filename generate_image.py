@@ -383,6 +383,7 @@ def run():
         raise
     except Exception as e:
         print("[ERROR]", e, flush=True)
+        sys.exit(1)
 
     finally:
         try:
