@@ -3,7 +3,7 @@ name: Run Substack Auto Publisher
 on:
   push:
     branches:
-      - main # 💡 Ab jab bhi aap main branch par 'git push' karenge, yeh automatic chalega!
+      - main # Jab bhi aap main branch par 'git push' karenge, yeh automatic chalega
   workflow_dispatch: # Taaki aap zaroorat padne par manually bhi run kar sakein
   schedule:
     - cron: '30 20 * * *' # Raat ke 2:00 baje (IST) automatic run karne ke liye cron schedule
@@ -24,25 +24,41 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3. 🟢 ROBUST VPN STEP (With push bypass and warning suppressors)
-      - name: Install and Connect OpenVPN (Ignore Trigger Errors)
+      # 3. 🟢 THE ULTIMATE TRACE-FIX FOR VPN STEP (Bypassing libc-bin/man-db triggers completely)
+      - name: Install and Connect OpenVPN
         env:
           OVPN_DATA: ${{ secrets.OPVN_CONFIG_DATA }}
         run: |
+          # 1. Bash ko bolna ki kisi bhi error par step ko fail NA kare (set +e)
+          set +e
           export DEBIAN_FRONTEND=noninteractive
           
-          # Needrestart ko remove karna
-          sudo apt-get remove --purge -y needrestart || true
+          # 2. Ubuntu ke automatic service triggers ko system level par block karna
+          sudo dpkg-divert --local --rename --add /usr/sbin/policy-rc.d
+          echo "exit 101" | sudo tee /usr/sbin/policy-rc.d
+          sudo chmod +x /usr/sbin/policy-rc.d
           
-          # Safely OpenVPN install karna aur trigger error ko || true se bypass karna
+          # 3. Needrestart ko hatana aur safely check bypass karna
+          sudo apt-get remove --purge -y needrestart
+          
+          # 4. OpenVPN install karna (Triggers ko ignore karne ke liye dpkg force options ke sath)
           sudo apt-get update -y
-          sudo apt-get install -y --no-install-recommends openvpn || true
+          sudo apt-get install -y \
+            -o Dpkg::Options::="--force-confdef" \
+            -o Dpkg::Options::="--force-confold" \
+            --no-install-recommends openvpn
           
-          # Secret se .ovpn data lekar file banana
+          # 5. Dpkg policies ko wapas normal karna taaki baaki runner steps disturb na hon
+          sudo rm -f /usr/sbin/policy-rc.d || true
+          
+          # 6. Secret se .ovpn data lekar file banana
           echo "$OVPN_DATA" > client.ovpn
           
-          # OpenVPN ko background daemon state mein call karna
+          # 7. OpenVPN ko background daemon state mein call karna
           sudo openvpn --config client.ovpn --log openvpn.log --daemon
+          
+          # 8. Bash ko wapas normal crash-on-error mode mein daalna taaki aage ke step secure rahein
+          set -e
           
           # VPN tunnel (tun0) active hone ke liye 20 seconds ka wait karna
           echo "[WAIT] Waiting for VPN connection to establish..."
