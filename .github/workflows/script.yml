@@ -1,0 +1,76 @@
+name: Run Substack Auto Publisher
+
+on:
+  workflow_dispatch: # Isse aap manually bhi GitHub panel se run kar sakte hain
+  schedule:
+    - cron: '30 20 * * *' # 💡 Raat ke 2:00 baje (IST) automatic run karne ke liye cron schedule
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest # Linux container fast aur efficient chalta hai
+
+    steps:
+      # 1. Repository ka code checkout karna
+      - name: Checkout repository code
+        uses: actions/checkout@v5
+
+      # 2. Python Environment setup karna
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      # 3. 💡 VPN CONNECTION STEP (Option 2 Implementation)
+      # Yeh step OpenVPN install karega aur aapke private `.ovpn` configuration se connect hoga
+      - name: Install and Connect OpenVPN (Bypass Cloudflare)
+        uses: tisyang/openvpn-action@v1
+        with:
+          # GitHub Secrets mein aapko apne VPN provider (jaise ProtonVPN Free) ki .ovpn file ka content save karna hoga
+          ovpn_config: ${{ secrets.OPVN_CONFIG_DATA }} 
+          
+      # 4. Playwright Persistent User Data ko cache se restore karna
+      - name: Restore Playwright Persistent Context Cache
+        uses: actions/cache@v4
+        with:
+          path: stack_user_data
+          key: ${{ runner.os }}-playwright-session-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-session-
+
+      # 5. Python Packages/Dependencies install karna
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright playwright-stealth python-dotenv cryptography
+
+      # 6. Playwright ke Chromium browser aur uski system dependencies install karna
+      - name: Install Playwright Chromium and system dependencies
+        run: |
+          playwright install chromium --with-deps
+
+      # 7. Script ko run karna aur Environment Secret paas karna
+      - name: Execute Automation Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }} # GitHub Secrets se decryption key uthayega
+        run: |
+          python post_article.py
+
+      # 8. Agar script fail hoti hai, toh error screenshot ko upload karna
+      - name: Upload Error Screenshot if script fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: substack-error-screenshot
+          path: error_screenshot.png
+          retention-days: 7
+
+      # 9. Agar script successful ho, to use wapas GitHub par commit karna
+      - name: Commit and Push updated article.json
+        if: success()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add article.json
+          git diff-index --quiet HEAD || git commit -m "chore: mark article as posted [skip ci]"
+          git push
