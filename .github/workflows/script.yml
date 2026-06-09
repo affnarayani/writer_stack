@@ -24,49 +24,54 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3. 🟢 THE ULTIMATE TRACE-FIX FOR VPN STEP (Bypassing libc-bin/man-db triggers completely)
+      # 3. 🟢 ULTRA-ROBUST VPN STEP WITH AUTO-LOGIN
       - name: Install and Connect OpenVPN
         env:
           OVPN_DATA: ${{ secrets.OPVN_CONFIG_DATA }}
+          VPN_USER: ${{ secrets.VPN_USERNAME }}
+          VPN_PASS: ${{ secrets.VPN_PASSWORD }}
         run: |
-          # 1. Bash ko bolna ki kisi bhi error par step ko fail NA kare (set +e)
           set +e
           export DEBIAN_FRONTEND=noninteractive
           
-          # 2. Ubuntu ke automatic service triggers ko system level par block karna
+          # Ubuntu ke automatic service triggers ko system level par block karna
           sudo dpkg-divert --local --rename --add /usr/sbin/policy-rc.d
           echo "exit 101" | sudo tee /usr/sbin/policy-rc.d
           sudo chmod +x /usr/sbin/policy-rc.d
           
-          # 3. Needrestart ko hatana aur safely check bypass karna
+          # Needrestart ko hatana aur safely check bypass karna
           sudo apt-get remove --purge -y needrestart
           
-          # 4. OpenVPN install karna (Triggers ko ignore karne ke liye dpkg force options ke sath)
+          # OpenVPN install karna
           sudo apt-get update -y
-          sudo apt-get install -y \
-            -o Dpkg::Options::="--force-confdef" \
-            -o Dpkg::Options::="--force-confold" \
-            --no-install-recommends openvpn
+          sudo apt-get install -y --no-install-recommends openvpn
           
-          # 5. Dpkg policies ko wapas normal karna taaki baaki runner steps disturb na hon
+          # Dpkg policies ko wapas normal karna
           sudo rm -f /usr/sbin/policy-rc.d || true
           
-          # 6. Secret se .ovpn data lekar file banana
+          # Secret se .ovpn data aur login credentials file banana
           echo "$OVPN_DATA" > client.ovpn
+          echo -e "$VPN_USER\n$VPN_PASS" > credentials.txt
+          chmod 600 credentials.txt
           
-          # 7. OpenVPN ko background daemon state mein call karna
+          # .ovpn file mein auth-user-pass configuration inject karna automatic login ke liye
+          sed -i 's/auth-user-pass.*/auth-user-pass credentials.txt/g' client.ovpn
+          if ! grep -q "auth-user-pass credentials.txt" client.ovpn; then
+            echo "auth-user-pass credentials.txt" >> client.ovpn
+          fi
+          
+          # OpenVPN ko background daemon state mein call karna
           sudo openvpn --config client.ovpn --log openvpn.log --daemon
           
-          # 8. Bash ko wapas normal crash-on-error mode mein daalna taaki aage ke step secure rahein
           set -e
           
-          # VPN tunnel (tun0) active hone ke liye 20 seconds ka wait karna
+          # VPN tunnel active hone ke liye 25 seconds ka wait karna
           echo "[WAIT] Waiting for VPN connection to establish..."
-          sleep 20
+          sleep 25
           
           # Verify karna ki public IP badla ya nahi
           echo "[INFO] Current Public IP is:"
-          curl -s --max-time 10 https://ifconfig.me || echo "Could not fetch IP, routing active. Checking status..."
+          curl -s --max-time 15 https://ifconfig.me || echo "Could not fetch IP, routing active. Checking status..."
           
           # Logs display in case debug stream is needed
           echo "--- OpenVPN Init Logs ---"
@@ -95,7 +100,7 @@ jobs:
       # 7. Script ko run karna aur Environment Secret paas karna
       - name: Execute Automation Script
         env:
-          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }} # GitHub Secrets se decryption key uthayega
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
         run: |
           python post_article.py
 
