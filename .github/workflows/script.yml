@@ -12,23 +12,38 @@ jobs:
     steps:
       # 1. Repository ka code checkout karna
       - name: Checkout repository code
-        uses: actions/checkout@v5
+        uses: actions/checkout@v4
 
       # 2. Python Environment setup karna
       - name: Set up Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3. 🟢 FIXED VPN STEP (Official Marketplace Action)
-      # Yeh step runner par OpenVPN service chalu karega aur safely connect karega
-      - name: Install and Connect OpenVPN (Bypass Cloudflare)
-        uses: wintellect/connect-openvpn@v2.7
-        with:
-          # GitHub Secrets se .ovpn file ka content uthayega
-          ovpn_config: ${{ secrets.OPVN_CONFIG_DATA }}
+      # 3. 🟢 BULLETPROOF VPN STEP (Bina kisi third-party action ke, pure Linux commands)
+      - name: Install and Connect OpenVPN (Direct Linux Command)
+        env:
+          OVPN_DATA: ${{ secrets.OPVN_CONFIG_DATA }}
+        run: |
+          # OpenVPN install karna
+          sudo apt-get update
+          sudo apt-get install -y openvpn openvpn-systemd-resolved
           
+          # Secret se .ovpn data lekar file banana
+          echo "$OVPN_DATA" > client.ovpn
+          
+          # OpenVPN ko background mein chalu karna
+          sudo openvpn --config client.ovpn --daemon
+          
+          # VPN tunnel (tun0) active hone ke liye 15 seconds ka wait karna
+          echo "[WAIT] Waiting for VPN connection to establish..."
+          sleep 15
+          
+          # Ek baar verify karna ki public IP badla ya nahi
+          echo "[INFO] Current Public IP is:"
+          curl -s https://ifconfig.me || echo "Could not fetch IP, checking connection..."
+
       # 4. Playwright Persistent User Data ko cache se restore karna
       - name: Restore Playwright Persistent Context Cache
         uses: actions/cache@v4
