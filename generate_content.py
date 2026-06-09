@@ -232,7 +232,7 @@ def run():
         print("[OK] URL opened successfully (Logged In)", flush=True)
 
         # 15 to 30 seconds random wait after page load
-        custom_random_wait(15, 30)
+        custom_random_wait(30, 60)
 
         # =========================
         # AUTOMATION FLOW
