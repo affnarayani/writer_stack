@@ -3,7 +3,7 @@ name: Run Substack Auto Publisher
 on:
   workflow_dispatch: # Isse aap manually bhi GitHub panel se run kar sakte hain
   schedule:
-    - cron: '30 20 * * *' # 💡 Raat ke 2:00 baje (IST) automatic run karne ke liye cron schedule
+    - cron: '30 20 * * *' # Raat ke 2:00 baje (IST) automatic run karne ke liye cron schedule
 
 jobs:
   run-script:
@@ -21,13 +21,13 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      # 3. 💡 VPN CONNECTION STEP (Option 2 Implementation)
-      # Yeh step OpenVPN install karega aur aapke private `.ovpn` configuration se connect hoga
+      # 3. 🟢 FIXED VPN STEP (Official Marketplace Action)
+      # Yeh step runner par OpenVPN service chalu karega aur safely connect karega
       - name: Install and Connect OpenVPN (Bypass Cloudflare)
-        uses: tisyang/openvpn-action@v1
+        uses: wintellect/connect-openvpn@v2.7
         with:
-          # GitHub Secrets mein aapko apne VPN provider (jaise ProtonVPN Free) ki .ovpn file ka content save karna hoga
-          ovpn_config: ${{ secrets.OPVN_CONFIG_DATA }} 
+          # GitHub Secrets se .ovpn file ka content uthayega
+          ovpn_config: ${{ secrets.OPVN_CONFIG_DATA }}
           
       # 4. Playwright Persistent User Data ko cache se restore karna
       - name: Restore Playwright Persistent Context Cache
