@@ -204,10 +204,233 @@ def run():
         print("[OK] Profile button found! Login Successful.", flush=True)
         custom_random_wait(3, 6)
 
+        # 2. Navigate to Publish Post URL
+        post_url = "https://mindtobetter.substack.com/publish/post/"
+        print(f"[STEP] Navigating to editor URL: {post_url}", flush=True)
+        page.goto(post_url, wait_until="load")
+        custom_random_wait(6, 12)
+
+        # =========================
+        # EDITOR WORKFLOW
+        # =========================
+
+        # Title Input
+        if "title" in article_data:
+            print("[STEP] Entering Title...", flush=True)
+            title_box = page.get_by_test_id('post-title')
+            title_box.wait_for(state="visible")
+            title_box.click()
+            for char in article_data["title"]:
+                page.keyboard.type(char)
+                time.sleep(random.uniform(0.04, 0.12))
+            print("[OK] Title entered", flush=True)
+            custom_random_wait(3, 6)
+
+        # Subtitle Input
+        if "subtitle" in article_data:
+            print("[STEP] Entering Subtitle...", flush=True)
+            subtitle_box = page.get_by_role('textbox', name='Add a subtitle…')
+            subtitle_box.wait_for(state="visible")
+            subtitle_box.click()
+            for char in article_data["subtitle"]:
+                page.keyboard.type(char)
+                time.sleep(random.uniform(0.04, 0.12))
+            print("[OK] Subtitle entered", flush=True)
+            custom_random_wait(4, 8)
+
+        # Move cursor to Body / Paragraph space
+        page.keyboard.press("Enter")
+        custom_random_wait(3, 6)
+
+        # Image Upload Flow via Dropdown
+        print("[STEP] Clicking Media Attach (Image) button...", flush=True)
+        media_btn = page.get_by_role('button', name='Image')
+        media_btn.wait_for(state="visible")
+        media_btn.click()
+        custom_random_wait(2, 4)
+
+        print("[STEP] Triggering file chooser via dropdown option and uploading image...", flush=True)
+        dropdown_item = page.get_by_role('menuitem', name='Image', exact=True)
+        dropdown_item.wait_for(state="visible")
         
+        with page.expect_file_chooser() as fc_info:
+            dropdown_item.click()
+        
+        file_chooser = fc_info.value
+        file_chooser.set_files(IMAGE_PATH)
+        print("[OK] Image attached successfully", flush=True)
+        custom_random_wait(6, 12)
+
+        # Body Paragraphs Typing Flow
+        is_first_para = True
+        for key in content_keys:
+            para_text = article_data[key]
+            if not para_text.strip():
+                continue
+
+            print(f"[STEP] Processing node: {key}...", flush=True)
+
+            if is_first_para:
+                first_para_locator = page.get_by_role('paragraph').first
+                first_para_locator.wait_for(state="visible")
+                first_para_locator.click()
+                is_first_para = False
+
+            # Special Link Parsing workflow for p_cta
+            if key == "p_cta" and "http" in para_text:
+                print("[STEP] Precision link targeting active for p_cta (Standard speed)", flush=True)
+                
+                parts = para_text.split("http")
+                target_url = "http" + parts[1].strip()
+                text_before_url = parts[0].strip()
+                
+                sub_parts = text_before_url.split("Click Here")
+                body_message = sub_parts[0].strip().rstrip(":")
+                display_text = "Click Here" + sub_parts[1].rstrip(":")
+                
+                for char in body_message:
+                    page.keyboard.type(char)
+                    time.sleep(random.uniform(0.03, 0.10))
+                
+                page.keyboard.type(" ")
+                time.sleep(0.1)
+                
+                for char in display_text:
+                    page.keyboard.type(char)
+                    time.sleep(random.uniform(0.04, 0.12))
+                custom_random_wait(2, 4)
+
+                print(f"[STEP] Selecting anchor text: '{display_text}'", flush=True)
+                page.keyboard.down("Shift")
+                for _ in range(len(display_text)):
+                    page.keyboard.press("ArrowLeft")
+                    time.sleep(0.02)
+                page.keyboard.up("Shift")
+                custom_random_wait(2, 4)
+
+                print("[STEP] Triggering Link toolbar button...", flush=True)
+                link_btn = page.get_by_role('button', name='Link')
+                link_btn.wait_for(state="visible")
+                link_btn.click()
+                custom_random_wait(2, 4)
+
+                print("[STEP] Filling URL textbox...", flush=True)
+                url_input = page.get_by_role('textbox', name='Enter URL...')
+                url_input.wait_for(state="visible")
+                url_input.fill(target_url)
+                custom_random_wait(2, 4)
+
+                print("[STEP] Confirming hyperlink creation...", flush=True)
+                confirm_link = page.get_by_text('Link', exact=True)
+                confirm_link.click()
+                custom_random_wait(3, 5)
+
+                print("[STEP] Navigating out of selection and breaking line...", flush=True)
+                page.keyboard.press("ArrowRight")
+                time.sleep(0.5)
+                page.keyboard.press("Enter")
+                custom_random_wait(4, 8)
+
+            elif key == "conclusion":
+                print("[STEP] Styling Heading 3 block for Conclusion header...", flush=True)
+                
+                style_picker = page.get_by_test_id('style-picker')
+                style_picker.wait_for(state="visible")
+                style_picker.click()
+                custom_random_wait(1, 3)
+                
+                heading_item = page.get_by_role('menuitem', name='Heading 3')
+                heading_item.wait_for(state="visible")
+                heading_item.click()
+                custom_random_wait(1, 3)
+                
+                bold_btn = page.get_by_role('button', name='Bold')
+                bold_btn.wait_for(state="visible")
+                bold_btn.click()
+                custom_random_wait(1, 3)
+                
+                print("[STEP] Typing heading tag: 'Conclusion'...", flush=True)
+                for char in "Conclusion":
+                    page.keyboard.type(char)
+                    time.sleep(random.uniform(0.04, 0.12))
+                custom_random_wait(2, 4)
+                
+                page.keyboard.press("Enter")
+                custom_random_wait(2, 4)
+                
+                print("[STEP] Re-clicking Bold button to turn off bold formatting...", flush=True)
+                bold_btn.wait_for(state="visible")
+                bold_btn.click()
+                custom_random_wait(2, 4)
+                
+                print("[STEP] Injecting main conclusion body paragraphs...", flush=True)
+                for char in para_text:
+                    page.keyboard.type(char)
+                    time.sleep(random.uniform(0.03, 0.10))
+                
+                print("[OK] Conclusion text processed successfully", flush=True)
+                custom_random_wait(4, 8)
+                page.keyboard.press("Enter")
+                custom_random_wait(3, 6)
+
+            else:
+                for char in para_text:
+                    page.keyboard.type(char)
+                    time.sleep(random.uniform(0.03, 0.10))
+                
+                print(f"[OK] Node ({key}) completed typing", flush=True)
+                custom_random_wait(4, 8)
+                
+                page.keyboard.press("Enter")
+                custom_random_wait(3, 6)
+
         print("[SUCCESS] All dynamic text contents appended successfully.", flush=True)
 
+        # =========================
+        # NEW PUBLISHING FLOW
+        # =========================
+        print("[STEP] Clicking primary 'Publish' action trigger button...", flush=True)
+        primary_publish_btn = page.get_by_test_id('publish-button')
+        primary_publish_btn.wait_for(state="visible")
+        primary_publish_btn.click()
         
+        intermediate_publish_wait()
+
+        # Handle Keywords Tag Injection Phase
+        if chosen_keywords:
+            print("[STEP] Locating 'Select or create tags' tags combobox input...", flush=True)
+            tags_input = page.get_by_role('combobox', name='Select or create tags')
+            tags_input.wait_for(state="visible")
+            tags_input.click()
+            custom_random_wait(2, 4)
+
+            for index, kw in enumerate(chosen_keywords, start=1):
+                print(f"[STEP] Inserting meta tag {index}/{len(chosen_keywords)}: '{kw}'", flush=True)
+                for char in kw:
+                    page.keyboard.type(char)
+                    time.sleep(random.uniform(0.04, 0.12))
+                
+                keyword_short_wait()
+                print(f"[STEP] Locking tag item sequence via Enter key...", flush=True)
+                page.keyboard.press("Enter")
+                keyword_short_wait()
+            
+            intermediate_publish_wait()
+
+        # Execute final submit action button click
+        print("[STEP] Dispatching ultimate post submission delivery click...", flush=True)
+        final_send_btn = page.get_by_role('button', name='Send to everyone now')
+        final_send_btn.wait_for(state="visible")
+        final_send_btn.click()
+        print("[SUCCESS] Article successfully transmitted to server pipelines!", flush=True)
+        
+        # ================================================
+        # POST-SUCCESS ACTIONS (JSON STATUS RE-WRITE)
+        # ================================================
+        mark_article_as_posted(ARTICLE_FILE)
+        
+        intermediate_publish_wait()
+
     except SystemExit:
         raise
     except Exception as e:
