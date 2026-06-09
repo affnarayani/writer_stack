@@ -26,6 +26,7 @@ HEADLESS = True
 STACK_COOKIES_FILE = "stack_cookies.json.encrypted"
 ARTICLE_FILE = "article.json"
 IMAGE_PATH = "image/pin.png"
+USER_DATA_DIR = "stack_user_data"  # Persistent context folder path
 
 PBKDF2_ITERATIONS = 200_000
 
@@ -173,15 +174,14 @@ def run():
     pw = pw_cm.__enter__()
 
     try:
-        browser = pw.chromium.launch(
+        # launch_persistent_context ka use karke context directly launch kiya gaya hai browser launch karne ki jagah
+        context = pw.chromium.launch_persistent_context(
+            user_data_dir=USER_DATA_DIR,
             headless=HEADLESS,
             args=[
                 "--start-maximized",
                 "--disable-blink-features=AutomationControlled"
-            ]
-        )
-
-        context = browser.new_context(
+            ],
             no_viewport=True,
             user_agent=USER_AGENT
         )
@@ -464,7 +464,7 @@ def run():
 
     finally:
         try:
-            browser.close()
+            context.close()
         except:
             pass
 
