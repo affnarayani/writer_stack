@@ -212,13 +212,6 @@ def run():
             "Article Details:\n"
             f"Title: {article_title}\n"
             f"Core Keywords: {', '.join(article_keywords)}\n"
-            "Key Themes:\n"
-            "- The psychology of overthinking and mental clutter\n"
-            "- The pressure created by pursuing a perfectly calm mind\n"
-            "- Finding clarity through acceptance rather than control\n"
-            "Emotional Journey:\n"
-            "- From: Mentally exhausted, scattered, anxious, overwhelmed by noise\n"
-            "- To: Clear-minded, calm, focused, and at peace\n"
             "STRICT RULES: No text, no words, no letters, no book covers, no logos anywhere in the image. "
             "Suitable as a Substack article hero image."
         )
