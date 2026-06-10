@@ -110,12 +110,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install playwright playwright-stealth python-dotenv cryptography
+          pip install playwright-stealth python-dotenv cryptography
+          pip install --upgrade playwright
 
       # 5. Playwright ke Chromium browser aur uski system dependencies install karna
       - name: Install Playwright Chromium and system dependencies
         run: |
-          playwright install chromium --with-deps
+          python -m playwright install chromium --with-deps
 
       # 6. Script ko run karna aur Environment Secret paas karna
       - name: Execute Automation Script
