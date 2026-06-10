@@ -258,7 +258,7 @@ def run():
         time.sleep(wait_before_post)
 
         print("[STEP] Clicking on Post button...", flush=True)
-        # modal.get_by_test_id('composer-post').click()
+        modal.get_by_test_id('composer-post').click()
         print("[OK] Note successfully shared on Substack!", flush=True)
 
         # local tracking file updates
