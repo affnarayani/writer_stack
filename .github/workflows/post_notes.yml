@@ -1,0 +1,155 @@
+name: Post Notes
+
+on:
+  workflow_dispatch: # Taaki aap zaroorat padne par manually bhi run kar sakein
+  workflow_run:
+    workflows: ["Generate Notes"] # Jab 'Generate Notes' workflow khatam hoga tab trigger hoga
+    types:
+      - completed
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  
+jobs:
+  run-script:
+    runs-on: ubuntu-latest # Linux container fast aur efficient chalta hai
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      # 1. Repository ka code checkout karna
+      - name: Checkout repository code
+        uses: actions/checkout@v5
+
+      # 2. Python Environment setup karna
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Pull Latest Changes (Maintain Persistence)
+        run: |
+          git pull origin ${GITHUB_REF_NAME} --rebase
+
+      # 3. 🟢 SMART RANDOM-SELECT VPN STEP (With Automatic Fallback)
+      - name: Install and Connect OpenVPN (Randomized Config Loader)
+        env:
+          VPN_USER: ${{ secrets.VPN_USERNAME }}
+          VPN_PASS: ${{ secrets.VPN_PASSWORD }}
+        run: |
+          set +e
+          export DEBIAN_FRONTEND=noninteractive
+          
+          # Ubuntu ke triggers block karna taaki apt installation fast ho
+          sudo dpkg-divert --local --rename --add /usr/sbin/policy-rc.d
+          echo "exit 101" | sudo tee /usr/sbin/policy-rc.d
+          sudo chmod +x /usr/sbin/policy-rc.d
+          
+          sudo apt-get remove --purge -y needrestart
+          sudo apt-get update -y
+          sudo apt-get install -y --no-install-recommends openvpn
+          
+          sudo rm -f /usr/sbin/policy-rc.d || true
+          
+          # 🎲 RANDOM FILE SELECTION MECHANISM
+          FILES=(ovpn/ovpn_*.txt)
+          
+          if [ ${#FILES[@]} -eq 0 ]; then
+            echo "[ERROR] No OVPN text files found in 'ovpn/' directory!"
+            exit 1
+          fi
+          
+          RANDOM_INDEX=$(( RANDOM % ${#FILES[@]} ))
+          SELECTED_FILE=${FILES[$RANDOM_INDEX]}
+          echo "[INFO] Randomly selected VPN Config: $SELECTED_FILE"
+          
+          cat "$SELECTED_FILE" > client.ovpn
+          
+          echo -e "$VPN_USER\n$VPN_PASS" > credentials.txt
+          chmod 600 credentials.txt
+          
+          sed -i '/update-resolv-conf/d' client.ovpn
+          sed -i 's/resolv-retry infinite/resolv-retry 2/g' client.ovpn
+          sed -i 's/auth-user-pass.*/auth-user-pass credentials.txt/g' client.ovpn
+          
+          echo "[INFO] Starting OpenVPN in background daemon mode..."
+          sudo openvpn --config client.ovpn --log openvpn.log --daemon
+          
+          set -e
+          
+          echo "[WAIT] Waiting 20 seconds for VPN tunnel..."
+          sleep 20
+          
+          echo "--- OpenVPN Init Logs ---"
+          sudo tail -n 15 openvpn.log || true
+          
+          echo "[INFO] Checking Public IP Status..."
+          if curl -s --max-time 10 https://ifconfig.me; then
+            echo -e "\n[SUCCESS] VPN Connected Successfully!"
+          else
+            echo -e "\n[WARNING] First choice failed or timed out. Trying a different random config as fallback..."
+            NEW_INDEX=$(( (RANDOM_INDEX + 1) % ${#FILES[@]} ))
+            SELECTED_FILE=${FILES[$NEW_INDEX]}
+            echo "[INFO] Fallback selected VPN Config: $SELECTED_FILE"
+            
+            sudo killall openvpn || true
+            cat "$SELECTED_FILE" > client.ovpn
+            sed -i '/update-resolv-conf/d' client.ovpn
+            sed -i 's/resolv-retry infinite/resolv-retry 2/g' client.ovpn
+            sed -i 's/auth-user-pass.*/auth-user-pass credentials.txt/g' client.ovpn
+            
+            sudo openvpn --config client.ovpn --log openvpn.log --daemon
+            sleep 20
+            sudo tail -n 15 openvpn.log || true
+            curl -s --max-time 10 https://ifconfig.me || echo "Proceeding with current network route..."
+          fi
+
+      # 4. Python Packages/Dependencies install karna
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install playwright playwright-stealth python-dotenv cryptography
+
+      # 5. Playwright ke Chromium browser aur uski system dependencies install karna
+      - name: Install Playwright Chromium and system dependencies
+        run: |
+          playwright install chromium --with-deps
+
+      # 6. Script ko run karna aur Environment Secret paas karna
+      - name: Execute Automation Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+        run: |
+          python post_notes.py
+
+      # 7. Agar script fail hoti hai, toh error screenshot ko upload karna
+      - name: Upload Error Screenshot if script fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: substack-notes-error-screenshot
+          path: error_screenshot.png
+          retention-days: 7
+
+      # 8. Agar script successful ho, to use wapas GitHub par commit karna
+      - name: Commit and Push updated files
+        if: success()
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          
+          # notes.json (jahan state _posted: true hoti hai) aur article.json (agar saare notes khatam hone par key clear hoti hai)
+          git add notes.json article.json
+          
+          if git diff --staged --quiet; then
+            echo "[INFO] No tracking changes detected. Skipping commit."
+          else
+            echo "[OK] Staged changes found. Committing and pushing updates..."
+            git commit -m "chore: update notes posting queue state [skip ci]"
+            git push origin ${GITHUB_REF_NAME}
+          fi

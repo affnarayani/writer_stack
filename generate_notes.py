@@ -181,6 +181,14 @@ def run():
             if not content_str:
                 raise ValueError("❌ 'article.json' khali hai.")
             article_data = json.loads(content_str)
+
+        # ====================================================
+        # NEW GUARD CHECK: Sirf tabhi chalo jab posted == True ho
+        # ====================================================
+        if article_data.get("posted") != True:
+            print("The article has not been posted yet. Notes generation skipped. Exiting.", flush=True)
+            sys.exit(0)
+        # ====================================================
             
         topic = article_data.get('title', next_article_topic)
         
@@ -502,6 +510,17 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
         raise
     except Exception as e:
         print("[ERROR]", e, flush=True)
+        # ============================================
+        # NEW: CAPTURE SCREENSHOT ON ERROR
+        # ============================================
+        if 'page' in locals() and page:
+            try:
+                screenshot_path = "error_screenshot.png"
+                page.screenshot(path=screenshot_path, full_page=True)
+                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+            except Exception as screenshot_err:
+                print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
+        # ============================================
         if browser:
             try:
                 browser.close()

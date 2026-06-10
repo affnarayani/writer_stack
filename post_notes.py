@@ -301,6 +301,17 @@ def run():
         raise
     except Exception as e:
         print("[ERROR] Automation cycle broke due to runtime trace:", e, flush=True)
+        # ============================================
+        # NEW: CAPTURE SCREENSHOT ON ERROR
+        # ============================================
+        if 'page' in locals() and page:
+            try:
+                screenshot_path = "error_screenshot.png"
+                page.screenshot(path=screenshot_path, full_page=True)
+                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+            except Exception as screenshot_err:
+                print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
+        # ============================================
         sys.exit(1)
 
     finally:
