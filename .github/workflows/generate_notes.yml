@@ -2,8 +2,6 @@ name: Generate Notes
 
 on:
   schedule:
-    # Din mein 3 baar chalega: 12:00 PM, 4:00 PM, aur 11:00 PM (UTC ke hisab se)
-    # Note: Agar aapka timeline Indian Standard Time (IST) hai, toh dhyan rakhein ki UTC 5:30 ghante peeche hota hai.
     - cron: '0 12,16,23 * * *'
   workflow_dispatch: # GitHub UI se manually run karne ke liye
 

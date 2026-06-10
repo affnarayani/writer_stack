@@ -172,7 +172,7 @@ def run():
         # 2. Get promo link
         promo_link = get_random_promo_link()
 
-        # 3. Parse article.json data (Bina clear kiye)
+        # 3. Parse article.json data
         if not article_file.exists():
             raise FileNotFoundError("❌ 'article.json' file nahi mili.")
             
@@ -183,14 +183,33 @@ def run():
             article_data = json.loads(content_str)
 
         # ====================================================
-        # NEW GUARD CHECK: Sirf tabhi chalo jab posted == True ho
+        # GUARD CHECK 1: Check if article has been posted
         # ====================================================
         if article_data.get("posted") != True:
             print("The article has not been posted yet. Notes generation skipped. Exiting.", flush=True)
             sys.exit(0)
+            
+        # ====================================================
+        # GUARD CHECK 2: Check if titles match to prevent duplicate generation
+        # ====================================================
+        current_article_title = article_data.get('title', next_article_topic)
+        
+        if notes_file.exists():
+            try:
+                with notes_file.open("r", encoding="utf-8") as nf:
+                    notes_content = nf.read().strip()
+                    if notes_content:
+                        notes_data = json.loads(notes_content)
+                        # Agar notes.json ka title aur article.json ka title same hai, toh skip karo
+                        if notes_data.get("title") == current_article_title:
+                            print("[SKIP] notes.json already has the same title as article.json. Notes generation skipped. Exiting.", flush=True)
+                            sys.exit(0)
+            except json.JSONDecodeError:
+                # Agar notes.json corrupt ya khali hai, toh check bypass karke normal chalne do
+                print("[INFO] notes.json exists but is empty or invalid JSON. Proceeding...", flush=True)
         # ====================================================
             
-        topic = article_data.get('title', next_article_topic)
+        topic = current_article_title
         
         article = f"""Title: {article_data.get('title', '')}
 Subtitle: {article_data.get('subtitle', '')}
@@ -222,11 +241,6 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
     except Exception as e:
         print(f"[ERROR] Configurations/Article files read karne me dikkat aayi: {e}", flush=True)
         sys.exit(1)
-
-    # 4. notes.json ko initialize/clear karna (Create if not exists)
-    with notes_file.open("w", encoding="utf-8") as f:
-        f.write("")
-    print("[OK] 'notes.json' cleared/initialized for new output", flush=True)
 
     cookies = load_cookies(Path(CHATGPT_COOKIES_FILE))
     print(f"[OK] Total cookies loaded: {len(cookies)}", flush=True)
@@ -461,13 +475,16 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
                 
                 parsed_json = json.loads(json_content.strip())
                 
-                
                 # ====================================================
                 # POST-PROCESSING: CLEAN MULTIPLE NEWLINES & POSTED TAGS
                 # ====================================================
                 processed_json = {}
                 for key, value in parsed_json.items():
-                    if key.startswith("note") and not key.endswith("_posted") and key != "title":
+                    # AI-generated title key conflict handle protection
+                    if key == "title":
+                        continue
+                        
+                    if key.startswith("note") and not key.endswith("_posted"):
                         if isinstance(value, str):
                             # \n\n ya usse zyada consecutive breaks ko single \n mein transform karna
                             cleaned_value = re.sub(r',\s*\n|\n\s*,', '', value)
@@ -481,10 +498,16 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
                     else:
                         processed_json[key] = value
 
+                # ====================================================
+                # MANUALLY APPEND TITLE FROM ARTICLE.JSON (SAFE & CLEAN)
+                # ====================================================
+                final_output = {}
+                final_output["title"] = current_article_title
+                final_output.update(processed_json)
                 
-                print("[STEP] Saving to notes.json...", flush=True)
+                print("[STEP] Saving to notes.json with manual title injection...", flush=True)
                 with notes_file.open("w", encoding="utf-8") as f:
-                    json.dump(processed_json, f, indent=4, ensure_ascii=False)
+                    json.dump(final_output, f, indent=4, ensure_ascii=False)
                 print("[OK] Notes successfully saved to notes.json with posting tags and clean line breaks", flush=True)
                 
             except json.JSONDecodeError as je:
@@ -511,7 +534,7 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
     except Exception as e:
         print("[ERROR]", e, flush=True)
         # ============================================
-        # NEW: CAPTURE SCREENSHOT ON ERROR
+        # CAPTURE SCREENSHOT ON ERROR
         # ============================================
         if 'page' in locals() and page:
             try:

@@ -2,10 +2,8 @@ name: Post Notes
 
 on:
   workflow_dispatch: # Taaki aap zaroorat padne par manually bhi run kar sakein
-  workflow_run:
-    workflows: ["Generate Notes"] # Jab 'Generate Notes' workflow khatam hoga tab trigger hoga
-    types:
-      - completed
+  schedule:
+    - cron: '0 12,16,23 * * *'
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -13,7 +11,6 @@ env:
 jobs:
   run-script:
     runs-on: ubuntu-latest # Linux container fast aur efficient chalta hai
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
 
     steps:
       # 1. Repository ka code checkout karna
