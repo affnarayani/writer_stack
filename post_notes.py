@@ -220,7 +220,8 @@ def run():
         # NOTE CREATION, SIMULATED TYPING & POST FLOW
         # ===================================================
         print("[STEP] Clicking 'Create' button to open dropdown...", flush=True)
-        page.get_by_role('button', name='Create', exact="true").click()
+        create_locator = page.get_by_role('button', name='Create', exact=True).or_(page.get_by_text('Create', exact=True))
+        create_locator.click()
         custom_random_wait(2, 4)
 
         print("[STEP] Clicking 'Note' menuitem from the dropdown...", flush=True)
