@@ -3,7 +3,7 @@ name: Generate Content
 on:
   schedule:
     # Example: Har roz raat ko 12 baje chalane ke liye (Aap apne hisab se cron change kar sakte hain)
-    - cron: '0 10 * * *'
+    - cron: '0 14 * * *'
   workflow_dispatch: # Taaki aap GitHub UI se manually bhi run kar sakein
 
 env:
