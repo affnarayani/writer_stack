@@ -210,7 +210,7 @@ def run():
 
         print("[STEP] Opening Substack URL...", flush=True)
         page.goto(
-            "https://mindtobetter.substack.com/publish/home",
+            "https://substack.com/@ujjawalkumar",
             wait_until="load"
         )
         print("[OK] Substack URL opened completely (Logged In)", flush=True)
