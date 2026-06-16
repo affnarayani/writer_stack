@@ -51,7 +51,7 @@ def custom_random_wait(min_sec=6, max_sec=12):
 
 
 def exit_delay_wait():
-    seconds = random.uniform(15, 30)
+    seconds = random.uniform(30, 60)
     print(f"[WAIT] Browser closing delay: Sleeping for {seconds:.2f} seconds...", flush=True)
     time.sleep(seconds)
 
