@@ -1,0 +1,96 @@
+name: Like and Comment
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Generate Comment"] # Jab 'Generate Comment' workflow khatam hoga tab trigger hoga
+    types:
+      - completed
+
+permissions:
+  contents: write # Grants permission to modify and push json state changes back to the repository
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      # 1. Fetch the latest code and state from the repository
+      - name: Checkout Repository
+        uses: actions/checkout@v5
+        with:
+          token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 
+
+      # 2. Configure Python Environment (Cache setup optimized)
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.11'
+
+      # 3. Configure Git Early (To avoid rebase identity conflicts)
+      - name: Configure Git Identity
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      # 4. Install required packages from requirements.txt or raw fallbacks
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; else pip install playwright playwright-stealth cryptography python-dotenv; fi
+
+      # 5. Set up Playwright Chromium browser and its system binaries
+      - name: Install Playwright and System Dependencies
+        run: |
+          python -m playwright install --with-deps chromium
+
+      # 6. Run the core automation script (Clean Headless Execution)
+      - name: Run Substack Like and Comment Script
+        env:
+          DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+        run: |
+          python like_comment.py
+
+      # =======================================================
+      # NEW: ARCHIVE THE ERROR SCREENSHOT IF SCRIPT CRASHES
+      # =======================================================
+      - name: Upload Error Screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: substack-final-error-screenshot
+          path: error_screenshot.png
+          if-no-files-found: ignore
+          retention-days: 3
+
+      # 7. Commit and Push Any Changes (Safe State Sync)
+      - name: Commit and Push Any Changes
+        if: always() # Hamesha chalega taaki agar partial run bhi hua ho toh state save ho jaye
+        run: |
+          BRANCH_NAME="${GITHUB_REF_NAME:-main}"
+          
+          # 1. Jo local changes python script ne kiye hain, unhe temporarily stash (hide) karo
+          git stash
+          
+          # 2. Pull down remote updates safely without conflict
+          git pull origin "$BRANCH_NAME" --rebase
+          
+          # 3. Stashed changes ko wapas apply karo (agar koi change nahi tha toh error na aaye isliye || true)
+          git stash pop || true
+          
+          # Only stage the intended files
+          [ -f status.json ] && git add status.json
+          [ -f commented.json ] && git add commented.json
+          
+          # Check if there are any staged modifications before performing the commit step
+          if git diff --staged --quiet; then
+            echo "No new changes to commit."
+          else
+            git commit -m "chore: update automation history state [skip ci]"
+            git push origin "$BRANCH_NAME"
+          fi
