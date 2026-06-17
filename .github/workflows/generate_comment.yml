@@ -1,9 +1,9 @@
-name: Generate Comment
+name: 1B. Generate Comment
 
 on: 
   workflow_dispatch: 
   workflow_run:
-    workflows: ["Search Post to Comment"]
+    workflows: ["1A. Search Post to Comment"]
     types:
       - completed
 
