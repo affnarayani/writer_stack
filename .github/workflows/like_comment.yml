@@ -21,14 +21,14 @@ jobs:
     steps:
       # 1. Fetch the latest code and state from the repository
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           token: ${{ secrets.PAT_TOKEN || secrets.GITHUB_TOKEN }}
           fetch-depth: 0 
 
       # 2. Configure Python Environment
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: '3.11'
 
