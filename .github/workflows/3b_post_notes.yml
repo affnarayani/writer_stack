@@ -1,4 +1,4 @@
-name: Post Notes
+name: 3B. Post Notes
 
 on:
   workflow_dispatch: # Taaki aap zaroorat padne par manually bhi run kar sakein

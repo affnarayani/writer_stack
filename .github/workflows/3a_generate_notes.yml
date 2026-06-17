@@ -1,4 +1,4 @@
-name: Generate Notes
+name: 3A. Generate Notes
 
 on:
   schedule:
