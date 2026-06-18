@@ -260,7 +260,7 @@ def run():
         print("[STEP] Clicking on Post button...", flush=True)
         modal.get_by_test_id('composer-post').click()
         print("[OK] Note successfully shared on Substack!", flush=True)
-        random.uniform(60, 120)
+        time.sleep(random.uniform(60, 120))
 
         # local tracking file updates
         notes_data[f"{target_note_key}_posted"] = True
