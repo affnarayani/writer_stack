@@ -258,9 +258,16 @@ def run():
         time.sleep(wait_before_post)
 
         print("[STEP] Clicking on Post button...", flush=True)
-        modal.get_by_test_id('composer-post').click()
+        for i in range(9):
+            page.keyboard.press('Tab')
+            time.sleep(random.uniform(3, 6))
+            print(f"[INFO] Pressed TAB {i+1}/9", flush=True)
+        print("[STEP] Pressing Enter to post...", flush=True)
+        page.keyboard.press('Enter')
         print("[OK] Note successfully shared on Substack!", flush=True)
-        time.sleep(random.uniform(60, 120))
+        wait_after_post = random.uniform(60, 120)
+        print(f"[WAIT] Sleeping for {wait_after_post:.2f} seconds after hitting post button...", flush=True)
+        time.sleep(wait_after_post)
 
         # local tracking file updates
         notes_data[f"{target_note_key}_posted"] = True
