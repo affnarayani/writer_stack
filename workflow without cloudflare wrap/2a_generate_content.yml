@@ -1,0 +1,67 @@
+name: 2A. Generate Content
+
+on:
+  schedule:
+    # Example: Har roz raat ko 12 baje chalane ke liye (Aap apne hisab se cron change kar sakte hain)
+    - cron: '0 14 * * *'
+  workflow_dispatch: # Taaki aap GitHub UI se manually bhi run kar sakein
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  run-automation:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+      with:
+        fetch-depth: 0 # Full history fetch karega taaki safe dynamic push ho sake
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.11' # Aapki library requirements ke liye optimal hai
+
+    - name: Configure Git
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+    - name: Pull Latest Changes (Maintain Persistence)
+      run: |
+        git pull origin ${GITHUB_REF_NAME} --rebase
+
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install playwright playwright-stealth cryptography python-dotenv
+        playwright install chromium --with-deps
+
+    - name: Run Script
+      env:
+        DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }} # GitHub Repository Secrets mein DECRYPT_KEY add karna mat bhoolna
+      run: |
+        python generate_content.py
+
+    - name: Upload Error Screenshot
+      if: failure() # Yeh step sirf tabhi chalega jab upar wala step fail hoga
+      uses: actions/upload-artifact@v4
+      with:
+        name: playright-error-screenshot
+        path: error_screenshot.png
+        if-no-files-found: ignore
+
+    - name: Commit and Push Changes (If updated)
+      run: |
+        # Check karega ki article.json ya topics.txt mein koi change hua hai ya nahi
+        git add article.json topics.txt
+        
+        if git diff --staged --quiet; then
+          echo "[INFO] No changes detected (Content might have been already posted or execution skipped). Skipping push."
+        else
+          echo "[OK] Changes detected. Committing and pushing updates..."
+          git commit -m "Automated: Update article and topics list [skip ci]"
+          git push origin ${GITHUB_REF_NAME}
+        fi
