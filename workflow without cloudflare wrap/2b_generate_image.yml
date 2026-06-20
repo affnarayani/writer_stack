@@ -38,13 +38,12 @@ jobs:
     - name: Install Dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install playwright playwright-stealth cryptography python-dotenv huggingface_hub requests
+        pip install playwright playwright-stealth cryptography python-dotenv requests
         playwright install chromium --with-deps
 
     - name: Run Image Script
       env:
-        DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }} # GitHub Repository Secrets se key uthayega
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}       # GitHub Repository Secrets se Hugging Face token uthayega
+        DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
       run: |
         python generate_image.py
 
