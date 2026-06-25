@@ -262,13 +262,13 @@ def run():
         else:
             raise RuntimeError("❌ Textbox locator load nahi ho paya (All strategies failed).")
         
-        image_selection_text = f"/createimage"
-        print(f"[STEP] Filling prompt: '{image_selection_text}'", flush=True)
-        chat_box.first.fill(image_selection_text)
+        # image_selection_text = f"/createimage"
+        # print(f"[STEP] Filling prompt: '{image_selection_text}'", flush=True)
+        # chat_box.first.fill(image_selection_text)
         
-        page.keyboard.press("Enter")
-        print("[OK] Prompt sent successfully", flush=True)
-        custom_random_wait(3, 6)
+        # page.keyboard.press("Enter")
+        # print("[OK] Prompt sent successfully", flush=True)
+        # custom_random_wait(3, 6)
 
         # ============================================
         # 2.1 Locate chat box and type prompt (With Fallbacks)
