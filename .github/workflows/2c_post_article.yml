@@ -104,6 +104,5 @@ jobs:
           git diff-index --quiet HEAD || git commit -m "chore: mark article as posted [skip ci]"
           
           # Pull the absolute latest changes right before pushing to catch race conditions
-          git pull origin ${GITHUB_REF_NAME} --rebase
-          
+          git pull origin ${GITHUB_REF_NAME} --rebase 
           git push origin ${GITHUB_REF_NAME}

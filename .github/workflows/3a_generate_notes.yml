@@ -93,5 +93,6 @@ jobs:
         else
           echo "[OK] Changes detected inside notes.json. Committing and pushing updates..."
           git commit -m "Automated: Update notes storage block [skip ci]"
+          git pull origin ${GITHUB_REF_NAME} --rebase
           git push origin ${GITHUB_REF_NAME}
         fi

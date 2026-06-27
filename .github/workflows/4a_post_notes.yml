@@ -107,5 +107,6 @@ jobs:
           else
             echo "[OK] Staged changes found. Committing and pushing updates..."
             git commit -m "chore: update notes posting queue state [skip ci]"
+            git pull origin ${GITHUB_REF_NAME} --rebase
             git push origin ${GITHUB_REF_NAME}
           fi

@@ -106,6 +106,7 @@ jobs:
         else
           echo "[OK] Changes detected. Committing dynamic state..."
           git commit -m "Automated: Fresh target state updated [skip ci]"
+          git pull origin ${GITHUB_REF_NAME} --rebase
           git push origin ${GITHUB_REF_NAME}
         fi
 
