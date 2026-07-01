@@ -241,6 +241,10 @@ def run():
         else:
             print("[WARNING] Profile button not detected directly, proceeding with caution...", flush=True)
 
+        if page.get_by_role('button', name='Create an image').is_visible():
+            page.get_by_role('button', name='Create an image').click()
+            print("[STEP] Create an image button clicked!...", flush=True)
+            custom_random_wait(6, 12)
         # ============================================
         # 2. Locate chat box and type prompt (With Fallbacks)
         # ============================================
@@ -261,14 +265,6 @@ def run():
             print("[OK] Textbox located and clicked successfully.", flush=True)
         else:
             raise RuntimeError("❌ Textbox locator load nahi ho paya (All strategies failed).")
-        
-        # image_selection_text = f"/createimage"
-        # print(f"[STEP] Filling prompt: '{image_selection_text}'", flush=True)
-        # chat_box.first.fill(image_selection_text)
-        
-        # page.keyboard.press("Enter")
-        # print("[OK] Prompt sent successfully", flush=True)
-        # custom_random_wait(3, 6)
 
         # ============================================
         # 2.1 Locate chat box and type prompt (With Fallbacks)
@@ -293,7 +289,8 @@ def run():
         
         prompt_text = f"Generate a photorealistic or artistic editorial image with a size strictly of 1672x941 px at a 16:9 aspect ratio. The image should serve as a compelling Substack article header — no text, no overlays, no book covers. Depict the following scene in high detail and cinematic quality: {prompt}"
         print(f"[STEP] Filling prompt: '{prompt_text}'", flush=True)
-        chat_box.first.fill(prompt_text)
+        chat_box.first.type(prompt_text)
+        custom_random_wait(6, 12)
         
         page.keyboard.press("Enter")
         print("[OK] Prompt sent successfully", flush=True)
