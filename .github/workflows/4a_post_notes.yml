@@ -64,7 +64,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install playwright-stealth python-dotenv cryptography
+          pip install playwright-stealth python-dotenv cryptography requests
           pip install --upgrade playwright
 
       # 5. Playwright ke Chromium browser aur uski system dependencies install karna
@@ -76,6 +76,7 @@ jobs:
       - name: Execute Automation Script
         env:
           DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+          IMGBBB_API_KEY: ${{ secrets.IMGBBB_API_KEY }}
         run: |
           python post_notes.py
 

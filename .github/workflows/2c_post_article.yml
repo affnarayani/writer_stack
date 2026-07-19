@@ -63,25 +63,22 @@ jobs:
           # 7. Verify ki pure system ka IP change hua ya nahi
           curl https://cloudflare.com/cdn-cgi/trace
 
-      # 4. Python Packages/Dependencies install karna
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install playwright playwright-stealth python-dotenv cryptography
+          pip install playwright playwright-stealth python-dotenv cryptography requests
 
-      # 5. Playwright ke Chromium browser aur uski system dependencies install karna
       - name: Install Playwright Chromium and system dependencies
         run: |
           playwright install chromium --with-deps
 
-      # 6. Script ko run karna aur Environment Secret paas karna
       - name: Execute Automation Script
         env:
           DECRYPT_KEY: ${{ secrets.DECRYPT_KEY }}
+          IMGBBB_API_KEY: ${{ secrets.IMGBBB_API_KEY }}
         run: |
           python post_article.py
 
-      # 7. Agar script fail hoti hai, toh error screenshot ko upload karna
       - name: Upload Error Screenshot if script fails
         if: failure()
         uses: actions/upload-artifact@v4
@@ -90,7 +87,6 @@ jobs:
           path: error_screenshot.png
           retention-days: 7
 
-      # 8. Agar script successful ho, to use wapas GitHub par commit karna
       - name: Commit and Push updated article.json
         if: success()
         run: |

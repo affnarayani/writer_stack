@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 
 from dotenv import load_dotenv
+import requests
 
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives import hashes
@@ -200,7 +201,31 @@ def run():
         if not target_locator.is_visible():
             print("[CRITICAL] Specified element not found on the page. Exiting with status 1.", flush=True)
             if page is not None:
-                page.screenshot(path="locator_not_found_screenshot.png", full_page=True)
+                try:
+                    screenshot_path = "locator_not_found_screenshot.png"
+                    page.screenshot(path=screenshot_path, full_page=True)
+                    print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                    
+                    imgbb_key = os.getenv("IMGBBB_API_KEY")
+                    if imgbb_key:
+                        print("[OK] Uploading screenshot to ImgBB...", flush=True)
+                        url = f"https://api.imgbb.com/1/upload?expiration=86400&key={imgbb_key}"
+                        
+                        with open(screenshot_path, "rb") as file:
+                            response = requests.post(url, files={"image": file})
+                        
+                        if response.status_code == 200:
+                            res_data = response.json()
+                            direct_url = res_data["data"]["display_url"]
+                            print("\n" + "="*50, flush=True)
+                            print(f"👉 DIRECT SCREENSHOT LINK: {direct_url}", flush=True)
+                            print("="*50 + "\n", flush=True)
+                        else:
+                            print(f"[WARNING] ImgBB Upload Failed Status: {response.status_code}", flush=True)
+                    else:
+                        print("[WARNING] IMGBBB_API_KEY environment variable not found.", flush=True)
+                except Exception as screenshot_err:
+                    print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
             if browser:
                 browser.close()
             sys.exit(1)
@@ -259,7 +284,31 @@ def run():
             if text_length < 150:
                 print(f"[CRITICAL] Extracted text length ({text_length} chars) is less than 150. Skipping and terminating with exit status 1.", flush=True)
                 if page is not None:
-                    page.screenshot(path="text_too_short_screenshot.png", full_page=True)
+                    try:
+                        screenshot_path = "text_too_short_screenshot.png"
+                        page.screenshot(path=screenshot_path, full_page=True)
+                        print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                        
+                        imgbb_key = os.getenv("IMGBBB_API_KEY")
+                        if imgbb_key:
+                            print("[OK] Uploading screenshot to ImgBB...", flush=True)
+                            url = f"https://api.imgbb.com/1/upload?expiration=86400&key={imgbb_key}"
+                            
+                            with open(screenshot_path, "rb") as file:
+                                response = requests.post(url, files={"image": file})
+                            
+                            if response.status_code == 200:
+                                res_data = response.json()
+                                direct_url = res_data["data"]["display_url"]
+                                print("\n" + "="*50, flush=True)
+                                print(f"👉 DIRECT SCREENSHOT LINK: {direct_url}", flush=True)
+                                print("="*50 + "\n", flush=True)
+                            else:
+                                print(f"[WARNING] ImgBB Upload Failed Status: {response.status_code}", flush=True)
+                        else:
+                            print("[WARNING] IMGBBB_API_KEY environment variable not found.", flush=True)
+                    except Exception as screenshot_err:
+                        print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
                 if browser:
                     browser.close()
                 sys.exit(1)
@@ -278,7 +327,31 @@ def run():
             
         else:
             print("[WARNING] New text element was not visible on the page. status.json not updated.", flush=True)
-            page.screenshot(path="comment_element_not_found.png", full_page=True)
+            try:
+                screenshot_path = "comment_element_not_found.png"
+                page.screenshot(path=screenshot_path, full_page=True)
+                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                
+                imgbb_key = os.getenv("IMGBBB_API_KEY")
+                if imgbb_key:
+                    print("[OK] Uploading screenshot to ImgBB...", flush=True)
+                    url = f"https://api.imgbb.com/1/upload?expiration=86400&key={imgbb_key}"
+                    
+                    with open(screenshot_path, "rb") as file:
+                        response = requests.post(url, files={"image": file})
+                    
+                    if response.status_code == 200:
+                        res_data = response.json()
+                        direct_url = res_data["data"]["display_url"]
+                        print("\n" + "="*50, flush=True)
+                        print(f"👉 DIRECT SCREENSHOT LINK: {direct_url}", flush=True)
+                        print("="*50 + "\n", flush=True)
+                    else:
+                        print(f"[WARNING] ImgBB Upload Failed Status: {response.status_code}", flush=True)
+                else:
+                    print("[WARNING] IMGBBB_API_KEY environment variable not found.", flush=True)
+            except Exception as screenshot_err:
+                print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
         
         # Final wait browser close karne se pehle (as usual 15 to 30 seconds)
         print("[STEP] Initiating final post-execution delay...", flush=True)
@@ -299,8 +372,27 @@ def run():
                 screenshot_path = "error_screenshot.png"
                 page.screenshot(path=screenshot_path, full_page=True)
                 print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                
+                imgbb_key = os.getenv("IMGBBB_API_KEY")
+                if imgbb_key:
+                    print("[OK] Uploading screenshot to ImgBB...", flush=True)
+                    url = f"https://api.imgbb.com/1/upload?expiration=86400&key={imgbb_key}"
+                    
+                    with open(screenshot_path, "rb") as file:
+                        response = requests.post(url, files={"image": file})
+                    
+                    if response.status_code == 200:
+                        res_data = response.json()
+                        direct_url = res_data["data"]["display_url"]
+                        print("\n" + "="*50, flush=True)
+                        print(f"👉 DIRECT SCREENSHOT LINK: {direct_url}", flush=True)
+                        print("="*50 + "\n", flush=True)
+                    else:
+                        print(f"[WARNING] ImgBB Upload Failed Status: {response.status_code}", flush=True)
+                else:
+                    print("[WARNING] IMGBBB_API_KEY environment variable not found.", flush=True)
             except Exception as screenshot_err:
-                print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
+                print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
         # ============================================
         
         if browser:

@@ -4,6 +4,7 @@ import json
 import time
 import base64
 import random
+import requests
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -437,10 +438,30 @@ def run():
         print("[ERROR] Script execution broke down due to trace:", e, flush=True)
         if page is not None:
             try:
-                page.screenshot(path="error_screenshot.png", full_page=True)
-                print("[OK] Error screenshot saved to error_screenshot.png", flush=True)
+                screenshot_path = "error_screenshot.png"
+                page.screenshot(path=screenshot_path, full_page=True)
+                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                
+                imgbb_key = os.getenv("IMGBBB_API_KEY")
+                if imgbb_key:
+                    print("[OK] Uploading screenshot to ImgBB...", flush=True)
+                    url = f"https://api.imgbb.com/1/upload?expiration=86400&key={imgbb_key}"
+                    
+                    with open(screenshot_path, "rb") as file:
+                        response = requests.post(url, files={"image": file})
+                    
+                    if response.status_code == 200:
+                        res_data = response.json()
+                        direct_url = res_data["data"]["display_url"]
+                        print("\n" + "="*50, flush=True)
+                        print(f"👉 DIRECT SCREENSHOT LINK: {direct_url}", flush=True)
+                        print("="*50 + "\n", flush=True)
+                    else:
+                        print(f"[WARNING] ImgBB Upload Failed Status: {response.status_code}", flush=True)
+                else:
+                    print("[WARNING] IMGBBB_API_KEY environment variable not found.", flush=True)
             except Exception as screenshot_err:
-                print(f"[WARNING] Could not take screenshot: {screenshot_err}", flush=True)
+                print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
         
         if browser:
             try:

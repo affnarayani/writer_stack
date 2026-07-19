@@ -198,22 +198,22 @@ def run():
         print("[OK] Cookies added successfully", flush=True)
 
         prompt = (
-            "You are an expert AI image prompt engineer specializing in editorial and article cover visuals. "
-            "Based on the following article details, write a highly descriptive, cinematic, and emotionally resonant image generation prompt "
-            "suitable for a Substack article header image. The image should NOT look like a book cover. "
-            "Instead, it should feel like a high-quality editorial photograph or digital artwork — "
-            "think conceptual, atmospheric, and thought-provoking, the kind used in top editorial publications. "
-            "The scene should metaphorically represent the core theme without showing any text, titles, or book covers. "
-            "Vary the visual style intentionally — choose ONE of the following that best fits the article's emotional tone: "
-            "surreal illustration, cinematic photography, abstract art, minimalist concept art, or moody atmospheric scene. "
-            "Do NOT default to clichéd imagery like figures surrounded by swirling thoughts or cracked heads. "
-            "Push toward unexpected, elegant, and original visual metaphors that feel fresh and premium. "
-            "Respond ONLY with the final optimized image prompt text. Do not include any introduction, explanation, or markdown.\n\n"
-            "Article Details:\n"
-            f"Title: {article_title}\n"
-            f"Core Keywords: {', '.join(article_keywords)}\n"
-            "STRICT RULES: No text, no words, no letters, no book covers, no logos anywhere in the image. "
-            "Suitable as a Substack article hero image."
+        "You are an expert AI image engineer specializing in editorial and article cover visuals. "
+        "Based on the following article details, generate a highly descriptive, cinematic, and emotionally resonant image "
+        "suitable for a Substack article header image. The image should NOT look like a book cover. "
+        "Instead, it should feel like a high-quality editorial photograph or digital artwork — "
+        "think conceptual, atmospheric, and thought-provoking, the kind used in top editorial publications. "
+        "The scene should metaphorically represent the core theme without showing any text, titles, or book covers. "
+        "Vary the visual style intentionally — choose ONE of the following that best fits the article's emotional tone: "
+        "surreal illustration, cinematic photography, abstract art, minimalist concept art, or moody atmospheric scene. "
+        "Do NOT default to clichéd imagery like figures surrounded by swirling thoughts or cracked heads. "
+        "Push toward unexpected, elegant, and original visual metaphors that feel fresh and premium. "
+        "Respond ONLY with the final optimized image. Do not include any introduction, explanation, or markdown.\n\n"
+        "Article Details:\n"
+        f"Title: {article_title}\n"
+        f"Core Keywords: {', '.join(article_keywords)}\n"
+        "STRICT RULES: No text, no words, no letters, no book covers, no logos anywhere in the image. "
+        "Suitable as a Substack article hero image."
         )
         # ========================================================
 
@@ -333,6 +333,32 @@ def run():
 
         if not found_share or not share_button:
             print("❌ Error: 'Share this image' button not found after 5 retries. Exiting program.", flush=True)
+            if 'page' in locals() and page:
+                try:
+                    screenshot_path = "error_screenshot.png"
+                    page.screenshot(path=screenshot_path, full_page=True)
+                    print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                    
+                    imgbb_key = os.getenv("IMGBBB_API_KEY")
+                    if imgbb_key:
+                        print("[OK] Uploading screenshot to ImgBB...", flush=True)
+                        url = f"https://api.imgbb.com/1/upload?expiration=86400&key={imgbb_key}"
+                        
+                        with open(screenshot_path, "rb") as file:
+                            response = requests.post(url, files={"image": file})
+                        
+                        if response.status_code == 200:
+                            res_data = response.json()
+                            direct_url = res_data["data"]["display_url"]
+                            print("\n" + "="*50, flush=True)
+                            print(f"👉 DIRECT SCREENSHOT LINK: {direct_url}", flush=True)
+                            print("="*50 + "\n", flush=True)
+                        else:
+                            print(f"[WARNING] ImgBB Upload Failed Status: {response.status_code}", flush=True)
+                    else:
+                        print("[WARNING] IMGBBB_API_KEY environment variable not found.", flush=True)
+                except Exception as screenshot_err:
+                    print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
             sys.exit(1)
 
         # ========================================================
@@ -490,6 +516,32 @@ def run():
                 
             except Exception as download_err:
                 print(f"❌ Error during 'Save' button download processing: {download_err}", flush=True)
+                if 'page' in locals() and page:
+                    try:
+                        screenshot_path = "error_screenshot.png"
+                        page.screenshot(path=screenshot_path, full_page=True)
+                        print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                        
+                        imgbb_key = os.getenv("IMGBBB_API_KEY")
+                        if imgbb_key:
+                            print("[OK] Uploading screenshot to ImgBB...", flush=True)
+                            url = f"https://api.imgbb.com/1/upload?expiration=86400&key={imgbb_key}"
+                            
+                            with open(screenshot_path, "rb") as file:
+                                response = requests.post(url, files={"image": file})
+                            
+                            if response.status_code == 200:
+                                res_data = response.json()
+                                direct_url = res_data["data"]["display_url"]
+                                print("\n" + "="*50, flush=True)
+                                print(f"👉 DIRECT SCREENSHOT LINK: {direct_url}", flush=True)
+                                print("="*50 + "\n", flush=True)
+                            else:
+                                print(f"[WARNING] ImgBB Upload Failed Status: {response.status_code}", flush=True)
+                        else:
+                            print("[WARNING] IMGBBB_API_KEY environment variable not found.", flush=True)
+                    except Exception as screenshot_err:
+                        print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
                 sys.exit(1)
             # Close shared page tab
             shared_page.close()
@@ -512,8 +564,27 @@ def run():
                 screenshot_path = "error_screenshot.png"
                 page.screenshot(path=screenshot_path, full_page=True)
                 print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                
+                imgbb_key = os.getenv("IMGBBB_API_KEY")
+                if imgbb_key:
+                    print("[OK] Uploading screenshot to ImgBB...", flush=True)
+                    url = f"https://api.imgbb.com/1/upload?expiration=86400&key={imgbb_key}"
+                    
+                    with open(screenshot_path, "rb") as file:
+                        response = requests.post(url, files={"image": file})
+                    
+                    if response.status_code == 200:
+                        res_data = response.json()
+                        direct_url = res_data["data"]["display_url"]
+                        print("\n" + "="*50, flush=True)
+                        print(f"👉 DIRECT SCREENSHOT LINK: {direct_url}", flush=True)
+                        print("="*50 + "\n", flush=True)
+                    else:
+                        print(f"[WARNING] ImgBB Upload Failed Status: {response.status_code}", flush=True)
+                else:
+                    print("[WARNING] IMGBBB_API_KEY environment variable not found.", flush=True)
             except Exception as screenshot_err:
-                print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
+                print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
         # ============================================
         sys.exit(1)
 
