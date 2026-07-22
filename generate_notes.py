@@ -552,22 +552,22 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
                 except:
                     pass
                 sys.exit(1)
-            else:
-                print("[ERROR] Save skip kiya gaya kyunki koi data fetch nahi hua. Exiting script...", flush=True)
-                if 'page' in locals() and page:
-                    try:
-                        screenshot_path = "error_screenshot.png"
-                        page.screenshot(path=screenshot_path, full_page=True)
-                        print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                        
-                        upload_to_tmpfiles(screenshot_path)
-                    except Exception as screenshot_err:
-                        print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
+        else:
+            print("[ERROR] Save skip kiya gaya kyunki koi data fetch nahi hua. Exiting script...", flush=True)
+            if 'page' in locals() and page:
                 try:
-                    browser.close()
-                except:
-                    pass
-                sys.exit(1)
+                    screenshot_path = "error_screenshot.png"
+                    page.screenshot(path=screenshot_path, full_page=True)
+                    print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
+                    
+                    upload_to_tmpfiles(screenshot_path)
+                except Exception as screenshot_err:
+                    print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
+            try:
+                browser.close()
+            except:
+                pass
+            sys.exit(1)
 
         # 15 to 30 seconds random wait before closing the browser normally
         print("[STEP] Performing random wait before normal browser closure...", flush=True)
