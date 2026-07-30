@@ -266,7 +266,7 @@ def run():
         print("[STEP] Locating the new comment/text element...", flush=True)
         
         # Aapka bataya hua CSS selector
-        comment_locator = page.locator('#reader-nav-page-scroll > div > div > div > div > div:nth-child(2) > div > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-8.pc-reset.permalinkHeader-bQJTnJ > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-reset.feedCommentBody-UWho7S > div > div').first
+        comment_locator = page.locator("div[class='pencraft pc-display-flex pc-flexDirection-column pc-gap-12 pc-position-relative pc-reset']").first
 
         if comment_locator.is_visible():
             raw_text = comment_locator.inner_text()
@@ -280,8 +280,8 @@ def run():
             # LENGTH CHECK (NEW MODIFICATION)
             # ==================================================
             text_length = len(cleaned_content)
-            if text_length < 150:
-                print(f"[CRITICAL] Extracted text length ({text_length} chars) is less than 150. Skipping and terminating with exit status 1.", flush=True)
+            if text_length < 120:
+                print(f"[CRITICAL] Extracted text length ({text_length} chars) is less than 120. Skipping and terminating with exit status 1.", flush=True)
                 if page is not None:
                     try:
                         screenshot_path = "text_too_short_screenshot.png"
@@ -306,15 +306,64 @@ def run():
                 json.dump(status_data, sf, indent=4, ensure_ascii=False)
                 
             print("[OK] status.json updated successfully with new details.", flush=True)
+
+            # ==================================================
+            # NEW: GO BACK, CLICK MENU, HIDE NOTE, AND SNOOZE
+            # ==================================================
+            try:
+                # 1. Page ko back karo
+                print("[STEP] Navigating back to the previous page...", flush=True)
+                page.go_back(wait_until="domcontentloaded")
+                
+                # 2. 15 se 30 seconds random wait
+                print("[STEP] Waiting 15-30 seconds after going back...", flush=True)
+                custom_random_wait(15, 30)
+                
+                # 3. 'More options' button ko locate karein
+                print("[STEP] Checking for 'More options' button...", flush=True)
+                more_options_btn = page.get_by_role("button", name="More options").first
+                
+                # Check if the element is visible
+                if more_options_btn.is_visible():
+                    print("[OK] 'More options' button found. Clicking it...", flush=True)
+                    more_options_btn.click()
+                    
+                    # 4. 3 se 6 seconds random wait
+                    print("[STEP] Waiting 3-6 seconds...", flush=True)
+                    time.sleep(random.uniform(3, 6))
+                    
+                    # 5. Dropdown se 'Hide note' menu item par click karo
+                    print("[STEP] Clicking 'Hide note' from menu...", flush=True)
+                    page.get_by_role("menuitem", name="Hide note").click()
+                    
+                    # 6. 6 se 12 seconds random wait
+                    print("[STEP] Waiting 6-12 seconds...", flush=True)
+                    time.sleep(random.uniform(6, 12))
+                    
+                    # 7. Dynamic text wale 'Snooze ... for 30 days' par click karo
+                    print("[STEP] Clicking snooze option for 30 days...", flush=True)
+                    page.locator('div').filter(has_text=re.compile(r"^Snooze .+ for 30 days$")).first.click()
+                    
+                    # 8. Final 6 se 12 seconds random wait
+                    print("[STEP] Final wait before closing browser (6-12 seconds)...", flush=True)
+                    time.sleep(random.uniform(6, 12))
+                    
+                    print("[OK] All steps completed successfully.", flush=True)
+                else:
+                    # Agar locator na mile toh yeh else block chalega
+                    print("[WARNING] Locator 'More options' button not found on the page.", flush=True)
+                
+            except Exception as flow_err:
+                print(f"[WARNING] Error during navigation/snooze flow: {flow_err}", flush=True)
             
         else:
             print("[WARNING] New text element was not visible on the page. status.json not updated.", flush=True)
             try:
                 screenshot_path = "comment_element_not_found.png"
                 page.screenshot(path=screenshot_path, full_page=True)
-                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                
+                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)    
                 upload_to_tmpfiles(screenshot_path)
+                sys.exit(1)
             except Exception as screenshot_err:
                 print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
         
