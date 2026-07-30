@@ -201,61 +201,73 @@ def run():
         # 1. URL par navigate hone ke baad 15, 30 seconds ka random wait
         custom_random_wait(15, 30)
 
-        # 2. Optional Like Step Check
-        if ENABLE_LIKE:
-            print("[STEP] Like functionality enabled. Locating main post like button...", flush=True)
-            like_selector = "div[class='pencraft pc-display-flex pc-justifyContent-space-between pc-alignItems-center pc-paddingBottom-8 pc-reset'] button[aria-label='Like']"
-            like_btn = page.locator(like_selector).first
-            
-            # Wait and click with strict locator checks
-            like_btn.wait_for(state="visible", timeout=15000)
-            like_btn.click()
-            print("[OK] Main post like button clicked successfully.", flush=True)
-
-            # 3. Wait 3, 6 seconds random after like
-            custom_random_wait(3, 6)
-        else:
-            print("[INFO] Like functionality disabled via configurations. Skipping like step...", flush=True)
-
-        # 4. Find and click 'New post' button
-        print("[STEP] Locating and clicking 'New post' button...", flush=True)
-        new_post_btn = page.get_by_role('button', name='New post')
-        new_post_btn.wait_for(state="visible", timeout=15000)
-        new_post_btn.click()
-        print("[OK] 'New post' clicked.", flush=True)
-
-        # 5. Again 15, 30 seconds ka random wait
-        custom_random_wait(15, 30)
-
-        # 6. Dynamic Class Selector for text input editor container
-        print("[STEP] Locating dynamic text editor input container...", flush=True)
-        editor_selector = "div[class^='pencraft pc-display-flex pc-flexDirection-column pc-reset textEditor-']"
-        input_field = page.locator(editor_selector).first
+        # ========================================================
+        # CHECK IF NOTE IS UNAVAILABLE
+        # ========================================================
+        unavailable_locator = page.get_by_text("This note is not available")
         
-        input_field.wait_for(state="visible", timeout=15000)
-        input_field.click()
-        print("[OK] Dynamic text editor field clicked & focused.", flush=True)
+        if unavailable_locator.is_visible(timeout=3000):
+            print("[INFO] 'This note is not available' detected. Skipping comment/like steps and jumping to cleanup...", flush=True)
+        else:
+            # ========================================================
+            # REGULAR AUTOMATION STEPS (ONLY IF NOTE IS AVAILABLE)
+            # ========================================================
 
-        # 7. 3, 6 seconds random wait
-        custom_random_wait(3, 6)
+            # 2. Optional Like Step Check
+            if ENABLE_LIKE:
+                print("[STEP] Like functionality enabled. Locating main post like button...", flush=True)
+                like_selector = "div[class='pencraft pc-display-flex pc-justifyContent-space-between pc-alignItems-center pc-paddingBottom-8 pc-reset'] button[aria-label='Like']"
+                like_btn = page.locator(like_selector).first
+                
+                # Wait and click with strict locator checks
+                like_btn.wait_for(state="visible", timeout=15000)
+                like_btn.click()
+                print("[OK] Main post like button clicked successfully.", flush=True)
 
-        # 8. Start typing comment like a human
-        print("[STEP] Typing comment via native keyboard emulation...", flush=True)
-        for char in comment_to_post:
-            page.keyboard.type(char)
-            time.sleep(random.uniform(0.04, 0.09))
+                # 3. Wait 3, 6 seconds random after like
+                custom_random_wait(3, 6)
+            else:
+                print("[INFO] Like functionality disabled via configurations. Skipping like step...", flush=True)
+
+            # 4. Find and click 'New post' button
+            print("[STEP] Locating and clicking 'New post' button...", flush=True)
+            new_post_btn = page.get_by_role('button', name='New post')
+            new_post_btn.wait_for(state="visible", timeout=15000)
+            new_post_btn.click()
+            print("[OK] 'New post' clicked.", flush=True)
+
+            # 5. Again 15, 30 seconds ka random wait
+            custom_random_wait(15, 30)
+
+            # 6. Dynamic Class Selector for text input editor container
+            print("[STEP] Locating dynamic text editor input container...", flush=True)
+            editor_selector = "div[class^='pencraft pc-display-flex pc-flexDirection-column pc-reset textEditor-']"
+            input_field = page.locator(editor_selector).first
             
-        print("[OK] Typing completed.", flush=True)
+            input_field.wait_for(state="visible", timeout=15000)
+            input_field.click()
+            print("[OK] Dynamic text editor field clicked & focused.", flush=True)
 
-        # 9. Jab comment type ho jaaye to 3, 6 seconds random wait kare
-        custom_random_wait(3, 6)
+            # 7. 3, 6 seconds random wait
+            custom_random_wait(3, 6)
 
-        # 10. Click 'composer-post' button
-        print("[STEP] Clicking 'composer-post' submit button...", flush=True)
-        submit_btn = page.get_by_test_id('composer-post')
-        submit_btn.wait_for(state="visible", timeout=15000)
-        submit_btn.click()
-        print("[OK] Comment submitted successfully!", flush=True)
+            # 8. Start typing comment like a human
+            print("[STEP] Typing comment via native keyboard emulation...", flush=True)
+            for char in comment_to_post:
+                page.keyboard.type(char)
+                time.sleep(random.uniform(0.04, 0.09))
+                
+            print("[OK] Typing completed.", flush=True)
+
+            # 9. Jab comment type ho jaaye to 3, 6 seconds random wait kare
+            custom_random_wait(3, 6)
+
+            # 10. Click 'composer-post' button
+            print("[STEP] Clicking 'composer-post' submit button...", flush=True)
+            submit_btn = page.get_by_test_id('composer-post')
+            submit_btn.wait_for(state="visible", timeout=15000)
+            submit_btn.click()
+            print("[OK] Comment submitted successfully!", flush=True)
 
         # ========================================================
         # HISTORY UPDATE (APPEND TO TOP)
