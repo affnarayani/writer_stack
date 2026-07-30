@@ -307,54 +307,51 @@ def run():
                 
             print("[OK] status.json updated successfully with new details.", flush=True)
 
-            # ==================================================
-            # NEW: GO BACK, CLICK MENU, HIDE NOTE, AND SNOOZE
-            # ==================================================
-            try:
-                # 1. Page ko back karo
-                print("[STEP] Navigating back to the previous page...", flush=True)
-                page.go_back(wait_until="domcontentloaded")
+            # try:
+            #     # 1. Page ko back karo
+            #     print("[STEP] Navigating back to the previous page...", flush=True)
+            #     page.go_back(wait_until="domcontentloaded")
                 
-                # 2. 15 se 30 seconds random wait
-                print("[STEP] Waiting 15-30 seconds after going back...", flush=True)
-                custom_random_wait(15, 30)
+            #     # 2. 15 se 30 seconds random wait
+            #     print("[STEP] Waiting 15-30 seconds after going back...", flush=True)
+            #     custom_random_wait(15, 30)
                 
-                # 3. 'More options' button ko locate karein
-                print("[STEP] Checking for 'More options' button...", flush=True)
-                more_options_btn = page.get_by_role("button", name="More options").first
+            #     # 3. 'More options' button ko locate karein
+            #     print("[STEP] Checking for 'More options' button...", flush=True)
+            #     more_options_btn = page.get_by_role("button", name="More options").first
                 
-                # Check if the element is visible
-                if more_options_btn.is_visible():
-                    print("[OK] 'More options' button found. Clicking it...", flush=True)
-                    more_options_btn.click()
+            #     # Check if the element is visible
+            #     if more_options_btn.is_visible():
+            #         print("[OK] 'More options' button found. Clicking it...", flush=True)
+            #         more_options_btn.click()
                     
-                    # 4. 3 se 6 seconds random wait
-                    print("[STEP] Waiting 3-6 seconds...", flush=True)
-                    time.sleep(random.uniform(3, 6))
+            #         # 4. 3 se 6 seconds random wait
+            #         print("[STEP] Waiting 3-6 seconds...", flush=True)
+            #         time.sleep(random.uniform(3, 6))
                     
-                    # 5. Dropdown se 'Hide note' menu item par click karo
-                    print("[STEP] Clicking 'Hide note' from menu...", flush=True)
-                    page.get_by_role("menuitem", name="Hide note").click()
+            #         # 5. Dropdown se 'Hide note' menu item par click karo
+            #         print("[STEP] Clicking 'Hide note' from menu...", flush=True)
+            #         page.get_by_role("menuitem", name="Hide note").click()
                     
-                    # 6. 6 se 12 seconds random wait
-                    print("[STEP] Waiting 6-12 seconds...", flush=True)
-                    time.sleep(random.uniform(6, 12))
+            #         # 6. 6 se 12 seconds random wait
+            #         print("[STEP] Waiting 6-12 seconds...", flush=True)
+            #         time.sleep(random.uniform(6, 12))
                     
-                    # 7. Dynamic text wale 'Snooze ... for 30 days' par click karo
-                    print("[STEP] Clicking snooze option for 30 days...", flush=True)
-                    page.locator('div').filter(has_text=re.compile(r"^Snooze .+ for 30 days$")).first.click()
+            #         # 7. Dynamic text wale 'Snooze ... for 30 days' par click karo
+            #         print("[STEP] Clicking snooze option for 30 days...", flush=True)
+            #         page.locator('div').filter(has_text=re.compile(r"^Snooze .+ for 30 days$")).first.click()
                     
-                    # 8. Final 6 se 12 seconds random wait
-                    print("[STEP] Final wait before closing browser (6-12 seconds)...", flush=True)
-                    time.sleep(random.uniform(6, 12))
+            #         # 8. Final 6 se 12 seconds random wait
+            #         print("[STEP] Final wait before closing browser (6-12 seconds)...", flush=True)
+            #         time.sleep(random.uniform(6, 12))
                     
-                    print("[OK] All steps completed successfully.", flush=True)
-                else:
-                    # Agar locator na mile toh yeh else block chalega
-                    print("[WARNING] Locator 'More options' button not found on the page.", flush=True)
+            #         print("[OK] All steps completed successfully.", flush=True)
+            #     else:
+            #         # Agar locator na mile toh yeh else block chalega
+            #         print("[WARNING] Locator 'More options' button not found on the page.", flush=True)
                 
-            except Exception as flow_err:
-                print(f"[WARNING] Error during navigation/snooze flow: {flow_err}", flush=True)
+            # except Exception as flow_err:
+            #     print(f"[WARNING] Error during navigation/snooze flow: {flow_err}", flush=True)
             
         else:
             print("[WARNING] New text element was not visible on the page. status.json not updated.", flush=True)
