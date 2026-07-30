@@ -296,88 +296,62 @@ def run():
                 sys.exit(1)
             
             # ==================================================
-            # USERNAME TOP 100 CHECK AGAINST COMMENTED.JSON
+            # UPDATE AND SAVE STATUS JSON (SUCCESS PATH)
             # ==================================================
-            # Extract username from current_url using regex (e.g. https://substack.com/@username/note/...)
-            username_match = re.search(r'substack\.com/(@[^/]+)', current_url)
-            extracted_username = username_match.group(1).lower() if username_match else None
-
-            # Get top 100 links from commented.json
-            top_100_urls = commented_urls[:100]
+            status_data["post_to_comment_found"] = True
+            status_data["link_to_post_to_comment"] = current_url
+            status_data["content_of_post_to_comment"] = cleaned_content
             
-            # Check if extracted_username exists in the top 100 URLs' usernames
-            username_found_in_top_100 = False
-            if extracted_username:
-                for link in top_100_urls:
-                    link_match = re.search(r'substack\.com/(@[^/]+)', link)
-                    if link_match and link_match.group(1).lower() == extracted_username:
-                        username_found_in_top_100 = True
-                        break
-
-            if username_found_in_top_100:
-                print(f"[INFO] Username '{extracted_username}' found in the top 100 of commented.json. Executing hide/snooze flow...", flush=True)
-                try:
-                    # 1. Page ko back karo
-                    print("[STEP] Navigating back to the previous page...", flush=True)
-                    page.go_back(wait_until="domcontentloaded")
-                    
-                    # 2. 15 se 30 seconds random wait
-                    print("[STEP] Waiting 15-30 seconds after going back...", flush=True)
-                    custom_random_wait(15, 30)
-                    
-                    # 3. 'More options' button ko locate karein
-                    print("[STEP] Checking for 'More options' button...", flush=True)
-                    more_options_btn = page.get_by_role("button", name="More options").first
-                    
-                    # Check if the element is visible
-                    if more_options_btn.is_visible():
-                        print("[OK] 'More options' button found. Clicking it...", flush=True)
-                        more_options_btn.click()
-                        
-                        # 4. 3 se 6 seconds random wait
-                        print("[STEP] Waiting 3-6 seconds...", flush=True)
-                        time.sleep(random.uniform(3, 6))
-                        
-                        # 5. Dropdown se 'Hide note' menu item par click karo
-                        print("[STEP] Clicking 'Hide note' from menu...", flush=True)
-                        page.get_by_role("menuitem", name="Hide note").click()
-                        
-                        # 6. 6 se 12 seconds random wait
-                        print("[STEP] Waiting 6-12 seconds...", flush=True)
-                        time.sleep(random.uniform(6, 12))
-                        
-                        # 7. Dynamic text wale 'Snooze ... for 30 days' par click karo
-                        print("[STEP] Clicking snooze option for 30 days...", flush=True)
-                        page.locator('div').filter(has_text=re.compile(r"^Snooze .+ for 30 days$")).first.click()
-                        
-                        # 8. Final 6 se 12 seconds random wait
-                        print("[STEP] Final wait before closing browser (6-12 seconds)...", flush=True)
-                        time.sleep(random.uniform(6, 12))
-                        
-                        print("[OK] All steps completed successfully.", flush=True)
-                    else:
-                        # Agar locator na mile toh yeh else block chalega
-                        print("[WARNING] Locator 'More options' button not found on the page.", flush=True)
-                    
-                except Exception as flow_err:
-                    print(f"[WARNING] Error during navigation/snooze flow: {flow_err}", flush=True)
+            with open(status_path, "w", encoding="utf-8") as sf:
+                json.dump(status_data, sf, indent=4, ensure_ascii=False)
                 
-                if browser:
-                    browser.close()
-                sys.exit(1)
+            print("[OK] status.json updated successfully with new details.", flush=True)
 
-            else:
-                # ==================================================
-                # UPDATE AND SAVE STATUS JSON (SUCCESS PATH)
-                # ==================================================
-                status_data["post_to_comment_found"] = True
-                status_data["link_to_post_to_comment"] = current_url
-                status_data["content_of_post_to_comment"] = cleaned_content
+            # try:
+            #     # 1. Page ko back karo
+            #     print("[STEP] Navigating back to the previous page...", flush=True)
+            #     page.go_back(wait_until="domcontentloaded")
                 
-                with open(status_path, "w", encoding="utf-8") as sf:
-                    json.dump(status_data, sf, indent=4, ensure_ascii=False)
+            #     # 2. 15 se 30 seconds random wait
+            #     print("[STEP] Waiting 15-30 seconds after going back...", flush=True)
+            #     custom_random_wait(15, 30)
+                
+            #     # 3. 'More options' button ko locate karein
+            #     print("[STEP] Checking for 'More options' button...", flush=True)
+            #     more_options_btn = page.get_by_role("button", name="More options").first
+                
+            #     # Check if the element is visible
+            #     if more_options_btn.is_visible():
+            #         print("[OK] 'More options' button found. Clicking it...", flush=True)
+            #         more_options_btn.click()
                     
-                print("[OK] status.json updated successfully with new details.", flush=True)
+            #         # 4. 3 se 6 seconds random wait
+            #         print("[STEP] Waiting 3-6 seconds...", flush=True)
+            #         time.sleep(random.uniform(3, 6))
+                    
+            #         # 5. Dropdown se 'Hide note' menu item par click karo
+            #         print("[STEP] Clicking 'Hide note' from menu...", flush=True)
+            #         page.get_by_role("menuitem", name="Hide note").click()
+                    
+            #         # 6. 6 se 12 seconds random wait
+            #         print("[STEP] Waiting 6-12 seconds...", flush=True)
+            #         time.sleep(random.uniform(6, 12))
+                    
+            #         # 7. Dynamic text wale 'Snooze ... for 30 days' par click karo
+            #         print("[STEP] Clicking snooze option for 30 days...", flush=True)
+            #         page.locator('div').filter(has_text=re.compile(r"^Snooze .+ for 30 days$")).first.click()
+                    
+            #         # 8. Final 6 se 12 seconds random wait
+            #         print("[STEP] Final wait before closing browser (6-12 seconds)...", flush=True)
+            #         time.sleep(random.uniform(6, 12))
+                    
+            #         print("[OK] All steps completed successfully.", flush=True)
+            #     else:
+            #         # Agar locator na mile toh yeh else block chalega
+            #         print("[WARNING] Locator 'More options' button not found on the page.", flush=True)
+                
+            # except Exception as flow_err:
+            #     print(f"[WARNING] Error during navigation/snooze flow: {flow_err}", flush=True)
             
         else:
             print("[WARNING] New text element was not visible on the page. status.json not updated.", flush=True)
