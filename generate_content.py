@@ -318,7 +318,7 @@ def run():
             f"The paragraph IMMEDIATELY BEFORE \"p_cta\" must end on a curiosity-triggering note: it should tease a deeper insight, hint at a practical solution, or raise a compelling question that makes the reader feel they need more.\n"
             f"The \"p_cta\" paragraph itself must feel like a natural continuation of that curiosity — not a commercial break. It should directly echo the specific language or idea from the preceding paragraph, making the connection feel precise and inevitable. Never use generic reassuring phrases like 'you're not alone' or 'many people feel this way' — the bridge must feel sharp and specific, not comforting.\n"
             f"The value of \"p_cta\" MUST be exactly formatted in this clean structure:\n"
-            f"[1-2 sentences bridging from the preceding paragraph's curiosity hook.] Click Here to Download This Ebook: {promo_link}\n\n"
+            f"[1-2 sentences bridging from the preceding paragraph's curiosity hook.] Click Here to Read More on This Topic: {promo_link}\n\n"
 
             f"OUTPUT FORMATTING:\n"
             f"You MUST deliver the entire article strictly inside a single JSON code block. No conversational text or markdown outside of it.\n"
@@ -329,7 +329,7 @@ def run():
             f'  "p1": "Paragraph 1 content...",\n'
             f'  "p2": "Paragraph 2 content...",\n'
             f'  ... \n'
-            f'  "p_cta": "[Bridge sentence(s) continuing from the preceding paragraph.] Click Here to Download This Ebook: {promo_link}",\n'
+            f'  "p_cta": "[Bridge sentence(s) continuing from the preceding paragraph.] Click Here to Read More on This Topic: {promo_link}",\n'
             f'  ... \n'
             f'  "pn": "Paragraph n content...",\n'
             f'  "conclusion": "Conclusion content...",\n'
