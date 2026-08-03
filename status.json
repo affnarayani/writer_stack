@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@ajukes/note/c-297153592",
+    "content_of_post_to_comment": "Substack notes cleverly avoids the dopamine spikes of other social media feeds by ensuring no-one sees or interacts with anything that I post",
     "comment_generated": false,
     "comment": ""
 }
