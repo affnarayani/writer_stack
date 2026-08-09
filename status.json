@@ -2,6 +2,6 @@
     "post_to_comment_found": true,
     "link_to_post_to_comment": "https://substack.com/@shearerp/note/c-296075752",
     "content_of_post_to_comment": "You can create a computer with human-like reasoning ability using next word prediction on a giant text corpus. It isn't sufficient, but it is the first and currently only way we know how to do it. This is a stunning development in the history of science and philosophy. It was predicted by, as far as I can tell, no one. No one prior to the deep learning revolution had this idea, not even at the conceptual level. No one guessed at it until it was just about to happen. In a world so full of eager theoretical speculation that the idea of atoms was invented thousands of years before you could have had any real reason to believe that they existed… nobody thought of this. I think that's really interesting.",
-    "comment_generated": false,
-    "comment": ""
+    "comment_generated": true,
+    "comment": "The surprising part may be less that prediction produced reasoning, and more that intelligence was hidden in the structure of language itself. Perhaps we underestimated how much thought is compressed into patterns."
 }
