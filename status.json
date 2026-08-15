@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@jamestaylorforeman/note/c-313302202",
+    "content_of_post_to_comment": "If you’re writing philosophy and you’re unsure how to make your point, here’s a good tip: write in cascades of abstractions with stacks of dependent clauses with webs of antecedents and very few sensory anchors. No one will be able to follow your argument well enough to dispute you, and many will also work hard to pretend to have understood so as to confer status on others. Win-win.",
     "comment_generated": false,
     "comment": ""
 }
