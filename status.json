@@ -2,6 +2,6 @@
     "post_to_comment_found": true,
     "link_to_post_to_comment": "https://substack.com/@sophiethomasfitlosophy/note/c-309253983",
     "content_of_post_to_comment": "fMRI studies are overrated. They measure indirect blood flow rather than actual neuron firing, suffer from poor individual test-retest reliability, and have historically faced statistical flaws that create false positives. Sincerely, a [salty] computational scientist.",
-    "comment_generated": false,
-    "comment": ""
+    "comment_generated": true,
+    "comment": "The interesting question may be less whether fMRI is flawed, but how neuroscience should combine noisy proxies with other methods without mistaking any single measurement for the mind itself."
 }
