@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@sophiethomasfitlosophy/note/c-309253983",
+    "content_of_post_to_comment": "fMRI studies are overrated. They measure indirect blood flow rather than actual neuron firing, suffer from poor individual test-retest reliability, and have historically faced statistical flaws that create false positives. Sincerely, a [salty] computational scientist.",
     "comment_generated": false,
     "comment": ""
 }
