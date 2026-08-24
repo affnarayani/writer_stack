@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": true,
-    "link_to_post_to_comment": "https://substack.com/@colefrederick/note/c-311833301",
-    "content_of_post_to_comment": "You have three coins in a bag: one is fair (heads and tails), one is double-headed, one is double-tailed. You draw one at random and flip it, it shows heads. What's the probability the other side is also heads?",
-    "comment_generated": true,
-    "comment": "The interesting twist is that the answer depends on the sampling process: observing a head changes the coin odds, but the way information is revealed is what makes Bayesian puzzles tricky. The hidden question is often not the math, but what was actually observed."
+    "post_to_comment_found": false,
+    "link_to_post_to_comment": "",
+    "content_of_post_to_comment": "",
+    "comment_generated": false,
+    "comment": ""
 }
