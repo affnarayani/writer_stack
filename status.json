@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@colefrederick/note/c-311833301",
+    "content_of_post_to_comment": "You have three coins in a bag: one is fair (heads and tails), one is double-headed, one is double-tailed. You draw one at random and flip it, it shows heads. What's the probability the other side is also heads?",
     "comment_generated": false,
     "comment": ""
 }
