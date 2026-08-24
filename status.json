@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": true,
-    "link_to_post_to_comment": "https://substack.com/@myqkaplan/note/c-314211868",
-    "content_of_post_to_comment": "My mom just told me that she recently saw a guy fixing an escalator, so she told him Mitch Hedberg’s joke about how an escalator can never break, it can only become stairs, and then she got a lecture from the escalator worker about how that is technically not true because a stopped escalator is NOT stairs and people shouldn’t use them like that.",
-    "comment_generated": true,
-    "comment": "The joke works because language turns a machine failure into a metaphor, but the worker’s correction reveals the gap between a clever idea and a safe one. Funny how engineering often lives in that gap."
+    "post_to_comment_found": false,
+    "link_to_post_to_comment": "",
+    "content_of_post_to_comment": "",
+    "comment_generated": false,
+    "comment": ""
 }
