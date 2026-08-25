@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@michaelpershan/note/c-321258295",
+    "content_of_post_to_comment": "I always start 4th Grade math with a two-part lecture, first I dive into the history of math from the Pythagoreans through Cardano, then on the second day I try to tackle the question “what is math” from a socio-philosophical perspective, making room for something like a structuralist view that maintains a stance of realism, which sets the stage for multiplication on day 3.",
     "comment_generated": false,
     "comment": ""
 }
