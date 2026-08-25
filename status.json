@@ -2,6 +2,6 @@
     "post_to_comment_found": true,
     "link_to_post_to_comment": "https://substack.com/@thedevilyouknow/note/c-307505618",
     "content_of_post_to_comment": "The craziest part about the Mississippi professor who caught 90% of his students cheating with AI is that 32 out of 35 didn’t even proof-read what answer it generated. Even on a midterm. The professor planted instructions in white text - invisible to the student but visible to an LLM - to include the word ‘Madagascar’ somewhere in the output where it made no sense. If nobody is even checking their work, comprehension and learning is completely off the table. Then, education is just a resource-intensive assembly line for prompting, and an elaborate vehicle to put young people into debt. One output was: “Madagascar floats sideways through the afternoon” and the student didn’t even notice.",
-    "comment_generated": false,
-    "comment": ""
+    "comment_generated": true,
+    "comment": "The deeper issue may be less AI cheating and more the disappearance of verification habits. A student who never checks an answer is outsourcing judgment, not just writing."
 }
