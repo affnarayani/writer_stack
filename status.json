@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@thinkthereforeai/note/c-301347090",
+    "content_of_post_to_comment": "If you can explain something smoothly, one of two things has happened: 1) You understand what you’re saying. 2) You’ve memorized the explanation. One good question will clear up which camp you’re in.",
     "comment_generated": false,
     "comment": ""
 }
