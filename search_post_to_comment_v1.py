@@ -27,7 +27,7 @@ HEADLESS = True
 
 STACK_COOKIES_FILE = "stack_cookies.json.encrypted"
 STATUS_FILE = "status.json"
-COMMENTED_FILE = "commented.json"  # Path for checked/commented URLs
+COMMENTED_FILE = "commented.json"  # NEW: Path for checked/commented URLs
 
 PBKDF2_ITERATIONS = 200_000
 
@@ -109,10 +109,11 @@ def clean_text(text: str) -> str:
     # Next line (\n aur \r) ko space se replace karna
     text = text.replace("\n", " ").replace("\r", " ")
     
-    # Emojis ko filter out karne ke liye Regex
+    # Emojis ko filter out karne ke liye Regex (BMP aur Extended planes dono handle karega)
+    # Yeh un characters ko rakhega jo emojis nahi hain
     emoji_pattern = re.compile(
         "["
-        "\U00010000-\U0010FFFF"  # Extended symbols and pictographs
+        "\U00010000-\U0010FFFF"  # Extended symbols and pictographs (emojis)
         "\u2600-\u27BF"          # Misc symbols & Dingbats
         "\u2300-\u23FF"          # Misc Technical
         "]+", flags=re.UNICODE
@@ -130,6 +131,7 @@ def upload_to_tmpfiles(screenshot_path):
         
     if response.status_code == 200:
         res_data = response.json()
+        # Direct view URL banane ke liye '/dl/' replace karte hain
         page_url = res_data["data"]["url"]
         direct_url = page_url.replace("tmpfiles.org/", "tmpfiles.org/dl/")
         print(f"👉 DIRECT LINK (Expires in 2 Hours): {direct_url}")
@@ -204,12 +206,12 @@ def run():
         custom_random_wait(15, 30)
         
         # ==================================================
-        # NEW LOCATOR & COPY LINK STRATEGY
+        # STRICT SINGLE LOCATOR STRATEGY
         # ==================================================
-        print("[STEP] Searching strictly for the specified menu target locator...", flush=True)
+        print("[STEP] Searching strictly for the specified CSS locator...", flush=True)
         
-        # Specified CSS locator for menu trigger
-        target_locator = page.locator("#reader-nav-page-scroll > div > div > div > div > div > div > div.pencraft.pc-display-flex.pc-paddingTop-24.pc-justifyContent-center.pc-reset.flex-grow-rzmknG > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-paddingBottom-20.pc-reset > div:nth-child(1) > div > div > div > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-12.pc-reset > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-4.pc-reset > div.pencraft.pc-display-flex.pc-minWidth-0.pc-gap-8.pc-alignItems-center.pc-justifyContent-space-between.pc-reset.line-height-20-t4M0El.font-text-qe4AeH.size-15-Psle70.weight-regular-mUq6Gb > div.pencraft.pc-display-flex.pc-gap-6.pc-maxHeight-20.pc-alignItems-center.pc-reset > div").first
+        # Sirf wahi locator jo aapne specify kiya hai
+        target_locator = page.locator('.pencraft.pc-display-flex.pc-gap-12.pc-alignItems-flex-start').first
 
         # Check if the element is visible on the page
         if not target_locator.is_visible():
@@ -227,40 +229,11 @@ def run():
                 browser.close()
             sys.exit(1)
 
-        print("[STEP] Element found. Clicking on it to open dropdown...", flush=True)
+        print("[STEP] Element found. Clicking on it...", flush=True)
         target_locator.click()
 
-        time.sleep(random.uniform(1, 3))
-
-        # Click on 'Copy link' option in the opened dropdown
-        print("[STEP] Clicking on 'Copy link' from dropdown...", flush=True)
-        copy_link_btn = page.get_by_role('menuitem', name='Copy link').first
-        if copy_link_btn.is_visible():
-            copy_link_btn.click()
-        else:
-            print("[CRITICAL] 'Copy link' menuitem not visible. Exiting with status 1.", flush=True)
-            if browser:
-                browser.close()
-            sys.exit(1)
-
-        time.sleep(random.uniform(1, 2))
-
-        # Extract copied URL from clipboard
-        copied_link = page.evaluate("navigator.clipboard.readText()")
-        print(f"[OK] Link copied from clipboard: {copied_link}", flush=True)
-
-        if not copied_link or not copied_link.startswith("http"):
-            print("[CRITICAL] Invalid or empty link extracted from clipboard. Exiting with status 1.", flush=True)
-            if browser:
-                browser.close()
-            sys.exit(1)
-
-        # Navigate to the copied link
-        print(f"[STEP] Navigating to copied link: {copied_link}", flush=True)
-        page.goto(copied_link, wait_until="load")
-
-        # Naye page/note page par jane ke baad 15-30 second wait
-        print("[STEP] Waiting after navigating to copied link...", flush=True)
+        # Naye page/note page par jane ke baad fir se 15-30 second wait
+        print("[STEP] Waiting after clicking the note...", flush=True)
         custom_random_wait(15, 30)
 
         # Navigated page ka URL print karna
@@ -268,7 +241,7 @@ def run():
         print(f"[NAVIGATED URL] Current Page URL: {current_url}", flush=True)
         
         # ==================================================
-        # DUPLICATE URL CHECK FROM COMMENTED.JSON
+        # NEW: DUPLICATE URL CHECK FROM COMMENTED.JSON
         # ==================================================
         commented_path = Path(COMMENTED_FILE)
         commented_urls = []
@@ -292,6 +265,7 @@ def run():
         # ==================================================
         print("[STEP] Locating the new comment/text element...", flush=True)
         
+        # Aapka bataya hua CSS selector
         comment_locator = page.locator("div[class='pencraft pc-display-flex pc-flexDirection-column pc-gap-12 pc-position-relative pc-reset']").first
 
         if comment_locator.is_visible():
@@ -303,7 +277,7 @@ def run():
             print(f"[CLEANED TEXT] {cleaned_content}", flush=True)
             
             # ==================================================
-            # LENGTH CHECK
+            # LENGTH CHECK (NEW MODIFICATION)
             # ==================================================
             text_length = len(cleaned_content)
             if text_length < 120:
@@ -324,11 +298,14 @@ def run():
             # ==================================================
             # USERNAME TOP 100 CHECK AGAINST COMMENTED.JSON
             # ==================================================
+            # Extract username from current_url using regex (e.g. https://substack.com/@username/note/...)
             username_match = re.search(r'substack\.com/(@[^/]+)', current_url)
             extracted_username = username_match.group(1).lower() if username_match else None
 
+            # Get top 100 links from commented.json
             top_100_urls = commented_urls[:100]
             
+            # Check if extracted_username exists in the top 100 URLs' usernames
             username_found_in_top_100 = False
             if extracted_username:
                 for link in top_100_urls:
@@ -352,6 +329,7 @@ def run():
                     print("[STEP] Checking for 'More options' button...", flush=True)
                     more_options_btn = page.get_by_role("button", name="More options").first
                     
+                    # Check if the element is visible
                     if more_options_btn.is_visible():
                         print("[OK] 'More options' button found. Clicking it...", flush=True)
                         more_options_btn.click()
@@ -378,6 +356,7 @@ def run():
                         
                         print("[OK] All steps completed successfully.", flush=True)
                     else:
+                        # Agar locator na mile toh yeh else block chalega
                         print("[WARNING] Locator 'More options' button not found on the page.", flush=True)
                     
                 except Exception as flow_err:
@@ -411,7 +390,7 @@ def run():
             except Exception as screenshot_err:
                 print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
         
-        # Final wait browser close karne se pehle (15 to 30 seconds)
+        # Final wait browser close karne se pehle (as usual 15 to 30 seconds)
         print("[STEP] Initiating final post-execution delay...", flush=True)
         custom_random_wait(15, 30)
 
@@ -422,7 +401,9 @@ def run():
     except Exception as e:
         print("[ERROR] Script execution broke down due to trace:", e, flush=True)
         
-        # CAPTURE SCREENSHOT ON ERROR
+        # ============================================
+        # NEW: CAPTURE SCREENSHOT ON ERROR
+        # ============================================
         if 'page' in locals() and page:
             try:
                 screenshot_path = "error_screenshot.png"
@@ -432,6 +413,7 @@ def run():
                 upload_to_tmpfiles(screenshot_path)
             except Exception as screenshot_err:
                 print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
+        # ============================================
         
         if browser:
             try:
