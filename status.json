@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@burlesona/note/c-327679414?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
+    "content_of_post_to_comment": "I’d like to see a consumer protection law that limits auto-renewing subscriptions. At minimum: if a customer has not logged in to an account for the entire duration of their subscription, it should not be allowed to auto-renew. Businesses also shouldn’t be allowed to automatically start billing at the end of a free trial without confirmation from the customer. I worked for years in subscription software. You wouldn’t believe how much of the revenue is customers how have just forgotten they are paying for a service.",
     "comment_generated": false,
     "comment": ""
 }
