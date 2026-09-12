@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": true,
-    "link_to_post_to_comment": "https://substack.com/@lamblog/note/c-321352420?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
-    "content_of_post_to_comment": "“Semiconductor manufacturing, for instance, relies on extremely pure silicon doped with just the right amount of chemical impurities. The slightest environmental change can upset the balance. Early semiconductor fabrication was found to be influenced by such factors as the phase of the moon (higher tides were thought to raise the groundwater and increase the humidity in the plant), female workers' menstrual cycles (which slightly changed the amount of oil on their hands), and whether male workers had recently visited the bathroom (which deposited microscopic droplets of urine on their hands). Because there were so many factors to take into account, many of which were not always obvious, Intel developed its Copy Exactly technological transfer methodology, which required every new semiconductor fabrication facility to copy an existing fabrication process down to the smallest detail, including the color and supplier of the paint used on the building.” - from Brian Potter’s The Origins of Efficiency",
-    "comment_generated": true,
-    "comment": "The deeper lesson may be that extreme precision often comes from accepting ignorance, not eliminating it. When systems have too many hidden variables, replication can outperform deeper understanding."
+    "post_to_comment_found": false,
+    "link_to_post_to_comment": "",
+    "content_of_post_to_comment": "",
+    "comment_generated": false,
+    "comment": ""
 }
