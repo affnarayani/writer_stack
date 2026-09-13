@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@bdtechtalks/note/c-334653388?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
+    "content_of_post_to_comment": "Most of my non-tech friends don't care about AI agents, custom software, Navier-Stokes, AI apocalypse, Astra, and Mythos. They're using ChatGPT as advanced search, to ask health questions, and to draft emails or create silly images. They don't know what Claude Code or Codex is. The benefits of advances in AI are real, they're just not evenly distributed.",
     "comment_generated": false,
     "comment": ""
 }
