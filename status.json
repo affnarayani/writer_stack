@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@jklundblad/note/c-336403437?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
+    "content_of_post_to_comment": "So, I'm a bit ignorant on this subject. Why was software not prepared for the year 2000? Why write software that would fail at the end of the 20th century? Was it generally accepted that this software would have long been replaced by then? What does this say about the expected pace of technological advancement?",
     "comment_generated": false,
     "comment": ""
 }
