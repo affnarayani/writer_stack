@@ -2,6 +2,6 @@
     "post_to_comment_found": true,
     "link_to_post_to_comment": "https://substack.com/@seal9000/note/c-321935862?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
     "content_of_post_to_comment": "It’s an arguably banal yet underrated development that Google AI-enhanced search does this very amusing and jarring thing where it just reifies any semi-gibberish string of words into a supposedly existing concept (linked sources including YouTube don’t actually describe this. Not a bad idea though)",
-    "comment_generated": false,
-    "comment": ""
+    "comment_generated": true,
+    "comment": "The strange part is that this isn't just hallucination, but a kind of semantic overfitting: search systems may be optimized to find patterns where humans would first ask whether the premise exists."
 }
