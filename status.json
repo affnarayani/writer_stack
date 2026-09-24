@@ -2,6 +2,6 @@
     "post_to_comment_found": true,
     "link_to_post_to_comment": "https://substack.com/@rasbt/note/c-343991538?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
     "content_of_post_to_comment": "The main appeal of open-source agent harnesses isn't that they are free, but that we can inspect what they are doing on our computers.",
-    "comment_generated": false,
-    "comment": ""
+    "comment_generated": true,
+    "comment": "The interesting shift is that transparency becomes a feature of agency, not just security. Closed agents may be faster, but inspectable ones let users build trust and develop better mental models of what automation is actually doing."
 }
