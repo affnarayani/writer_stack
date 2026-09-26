@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": true,
-    "link_to_post_to_comment": "https://substack.com/@philosophybear/note/c-346129103?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
-    "content_of_post_to_comment": "I keep seeing a lot of people saying they don't trust Pangram because their work even from before AI gets flagged, and yet oddly I haven't seen anyone provide examples. I am sure it at least occasionally happens but the total lack of examples is curious.",
-    "comment_generated": true,
-    "comment": "The absence of examples is interesting, but it may also reflect a documentation problem: false positives are hard to prove when the tool's criteria aren't transparent. The burden of evidence cuts both ways."
+    "post_to_comment_found": false,
+    "link_to_post_to_comment": "",
+    "content_of_post_to_comment": "",
+    "comment_generated": false,
+    "comment": ""
 }
