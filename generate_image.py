@@ -250,7 +250,7 @@ def run():
         # NEW: CHECK LOGIN SUCCESS VIA USER PROFILE BUTTON
         # ============================================
         print("[STEP] Checking login success via profile button...", flush=True)
-        profile_button = page.get_by_role('button', name=list(map(lambda x: x.compile(r'.*Free, open'), [__import__('re')]))[0])
+        profile_button = page.get_by_role('button', name=list(map(lambda x: x.compile(r'.*Free, open'), [__import__('re')]))[0]).or_(page.get_by_role('button', name='Open profile menu'))
         
         if profile_button.count() > 0:
             print(f"[OK] LOGIN SUCCESS: Profile button found -> '{profile_button.first.get_attribute('aria-label') or 'User Account'}'", flush=True)
@@ -267,7 +267,7 @@ def run():
         # 2. Locate chat box and type prompt (With Fallbacks)
         # ============================================
         print("[STEP] Locating chat textbox...", flush=True)
-        chat_box = page.get_by_role('textbox', name='Chat with ChatGPT')
+        chat_box = page.get_by_role('textbox', name='Chat with ChatGPT').or_(page.get_by_role('textbox', name='Ask ChatGPT'))
         
         if chat_box.count() == 0:
             print("[INFO] Fallback 1: Searching for 'Describe or edit an image' paragraph inside textbox context...", flush=True)
@@ -288,7 +288,7 @@ def run():
         # 2.1 Locate chat box and type prompt (With Fallbacks)
         # ============================================
         print("[STEP] Locating chat textbox...", flush=True)
-        chat_box = page.get_by_role('textbox', name='Chat with ChatGPT')
+        chat_box = page.get_by_role('textbox', name='Chat with ChatGPT').or_(page.get_by_role('textbox', name='Ask ChatGPT'))
         
         if chat_box.count() == 0:
             print("[INFO] Fallback 1: Searching for 'Ask anything' paragraph inside textbox context...", flush=True)
@@ -351,7 +351,7 @@ def run():
             if not found_share and attempt == 5:
                 print("[INFO] 5 retries complete ho gaye. Image nahi mili, chat_box mein 'Continue Generating Prompt' bhej rahe hain...", flush=True)
                 try:
-                    chat_box = page.get_by_role('textbox', name='Chat with ChatGPT')
+                    chat_box = page.get_by_role('textbox', name='Chat with ChatGPT').or_(page.get_by_role('textbox', name='Ask ChatGPT'))
                     if chat_box.count() == 0:
                         chat_box = page.locator('div[contenteditable="true"]').filter(has=page.locator('p', has_text='Describe or edit an image')).first
                     if chat_box.count() == 0:
