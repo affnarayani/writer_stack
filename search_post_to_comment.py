@@ -208,7 +208,11 @@ def run():
         print("[STEP] Searching strictly for the specified menu target locator...", flush=True)
         
         # Specified CSS locator for menu trigger
-        target_locator = page.locator("#reader-nav-page-scroll > div > div > div > div > div > div > div.pencraft.pc-display-flex.pc-paddingTop-24.pc-justifyContent-center.pc-reset.flex-grow-rzmknG > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-paddingBottom-20.pc-reset > div:nth-child(1) > div > div > div > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-12.pc-reset > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-4.pc-reset > div.pencraft.pc-display-flex.pc-minWidth-0.pc-gap-8.pc-alignItems-center.pc-justifyContent-space-between.pc-reset.line-height-20-t4M0El.font-text-qe4AeH.size-15-Psle70.weight-regular-mUq6Gb > div.pencraft.pc-display-flex.pc-gap-6.pc-maxHeight-20.pc-alignItems-center.pc-reset > div").first
+        target_locator = page.locator("div").filter(
+            has_text=re.compile(r"^.*Subscribe$")
+        ).get_by_label("More options").or_(
+            page.locator("#reader-nav-page-scroll > div > div > div > div > div > div > div.pencraft.pc-display-flex.pc-paddingTop-24.pc-justifyContent-center.pc-reset.flex-grow-rzmknG > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-paddingBottom-20.pc-reset > div:nth-child(1) > div > div > div > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-12.pc-reset > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-4.pc-reset > div.pencraft.pc-display-flex.pc-minWidth-0.pc-gap-8.pc-alignItems-center.pc-justifyContent-space-between.pc-reset.line-height-20-t4M0El.font-text-qe4AeH.size-15-Psle70.weight-regular-mUq6Gb > div.pencraft.pc-display-flex.pc-gap-6.pc-maxHeight-20.pc-alignItems-center.pc-reset > div")
+        ).first
 
         # Check if the element is visible on the page
         if not target_locator.is_visible():
