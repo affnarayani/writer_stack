@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": true,
-    "link_to_post_to_comment": "https://substack.com/@redclaybestiary/note/c-355010485?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
-    "content_of_post_to_comment": "If the LLM race is such a boon to software development, where is all the brilliant new software and why does existing software seem to be getting gradually worse? Looking at you, Microsoft Teams.",
-    "comment_generated": true,
-    "comment": "Maybe the missing variable is incentives: LLMs make building cheaper, but enterprise software rewards retention and complexity more than elegance. The bottleneck may have shifted from creation to product judgment."
+    "post_to_comment_found": false,
+    "link_to_post_to_comment": "",
+    "content_of_post_to_comment": "",
+    "comment_generated": false,
+    "comment": ""
 }
