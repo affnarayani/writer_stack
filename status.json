@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": true,
-    "link_to_post_to_comment": "https://substack.com/@dhananjaygoel/note/c-361387470?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
-    "content_of_post_to_comment": "AI can write 500 lines of code in minutes. But can your team explain what those 500 lines actually do? That's the part I'd worry about. Generating code is getting easier. Understanding, reviewing, and maintaining it still takes engineering judgment. A feature that works today but nobody can safely modify tomorrow isn't necessarily a win. Developers, has AI reduced your workload or just shifted more time into reviewing code?",
-    "comment_generated": true,
-    "comment": "Maybe the real bottleneck isn't reviewing AI-generated code, but knowing which parts deserve scrutiny. The danger is that readable, passing code can inspire more confidence than it has earned."
+    "post_to_comment_found": false,
+    "link_to_post_to_comment": "",
+    "content_of_post_to_comment": "",
+    "comment_generated": false,
+    "comment": ""
 }
