@@ -1,7 +1,7 @@
 {
-    "post_to_comment_found": false,
-    "link_to_post_to_comment": "",
-    "content_of_post_to_comment": "",
+    "post_to_comment_found": true,
+    "link_to_post_to_comment": "https://substack.com/@sarkardipankar/note/c-361260977?r=4yrhte&utm_source=notes-share-action&utm_medium=web",
+    "content_of_post_to_comment": "Before an agent touches a process, have two people who run it write it down separately. Their versions will agree on the happy path and split on the exceptions. The agent will not pick either version. It will do something in between, and nobody notices until a real exception arrives. James Kerr said it this morning: companies hand AI a process nobody has written down, then blame the AI. Reconciling those two write-ups is most of the project. The agent is the last step.",
     "comment_generated": false,
     "comment": ""
 }
