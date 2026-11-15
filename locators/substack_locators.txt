@@ -1,0 +1,84 @@
+# ============================================================
+# Substack Platform Locators (substack.com)
+# Format: locator_name = page.<playwright_expression>
+# Duplicate names: first entry is primary, subsequent same-named entries are fallbacks.
+# All expressions are checked immediately; first match wins (no waiting on timeouts).
+# ============================================================
+
+# --- Login & navigation ---
+# Profile button used to verify login on substack.com
+substack_profile_button = page.get_by_role('button', name='Profile').or_(page.locator("a[aria-label='Profile']"))
+
+# --- Article editor ---
+# Post title input field
+substack_post_title = page.get_by_test_id('post-title')
+# Subtitle input field
+substack_subtitle = page.get_by_role('textbox', name='Add a subtitle…')
+# Image / media attach button in the editor toolbar
+substack_media_image_button = page.get_by_role('button', name='Image')
+# Dropdown menu item for image upload
+substack_dropdown_image_item = page.get_by_role('menuitem', name='Image', exact=True)
+# First body paragraph where content typing begins
+substack_first_paragraph = page.get_by_role('paragraph').first
+# Link toolbar button (for hyperlinking p_cta text)
+substack_link_button = page.get_by_role('button', name='Link')
+# URL input textbox inside the link dialog
+substack_url_input = page.get_by_role('textbox', name='Enter URL...')
+# Confirm link button text
+substack_confirm_link_text = page.get_by_text('Link', exact=True)
+# Block style picker dropdown
+substack_style_picker = page.get_by_test_id('style-picker')
+# Heading 3 menu item (used for Conclusion heading)
+substack_heading3_item = page.get_by_role('menuitem', name='Heading 3')
+# Bold toggle button
+substack_bold_button = page.get_by_role('button', name='Bold')
+
+# --- Publishing ---
+# Primary publish button
+substack_publish_button = page.get_by_test_id('publish-button')
+# Tags combobox input ('Select or create tags')
+substack_tags_combobox = page.get_by_role('combobox', name='Select or create tags')
+substack_tags_combobox = page.get_by_placeholder('Select or create tags')
+substack_tags_combobox = page.locator("div[class*='pencraft'] input[role='combobox']").last
+substack_tags_combobox = page.locator("div[class*='pencraft'] input[type='text']").last
+# Final send button ('Send to everyone now')
+substack_send_button = page.get_by_role('button', name='Send to everyone now')
+substack_send_button = page.get_by_text('Send to everyone now')
+
+# --- Notes creation ---
+# Create button to open the note dropdown
+substack_create_button = page.get_by_role('button', name='Create', exact=True).or_(page.get_by_text('Create', exact=True))
+# Note menu item inside the create dropdown
+substack_note_menuitem = page.get_by_role('menuitem', name='Note')
+# Note creation modal
+substack_note_modal = page.get_by_test_id('modal')
+
+# --- Like / comment flow ---
+# Main post like button (aria-label Like)
+substack_like_button = page.locator("div[class='pencraft pc-display-flex pc-justifyContent-space-between pc-alignItems-center pc-paddingBottom-8 pc-reset'] button[aria-label='Like']")
+# New post button on a note page
+substack_new_post_button = page.get_by_role('button', name='New post')
+# Dynamic text editor input container for comments
+substack_comment_editor = page.locator("div[class^='pencraft pc-display-flex pc-flexDirection-column pc-reset textEditor-']")
+# Composer post / submit button
+substack_composer_post_button = page.get_by_test_id('composer-post')
+
+# --- Page state ---
+# 'This note is not available' message
+substack_note_unavailable = page.get_by_text("This note is not available")
+
+# --- More options / hide / snooze flow ---
+# More options button
+substack_more_options_button = page.get_by_role("button", name="More options")
+# Hide note menu item
+substack_hide_note_menuitem = page.get_by_role("menuitem", name="Hide note")
+# Snooze for 30 days option (dynamic text)
+substack_snooze_option = page.locator('div').filter(has_text=re.compile(r"^Snooze .+ for 30 days$")).first
+
+# --- Search post to comment ---
+# Copy link menu item from dropdown
+substack_copy_link_menuitem = page.get_by_role('menuitem', name='Copy link').first
+# Target menu trigger locator (Subscribe / More options area)
+substack_target_locator = page.locator("div").filter(has_text=re.compile(r"^.*Subscribe$")).get_by_label("More options").or_(page.locator("#reader-nav-page-scroll > div > div > div > div > div > div > div.pencraft.pc-display-flex.pc-paddingTop-24.pc-justifyContent-center.pc-reset.flex-grow-rzmknG > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-paddingBottom-20.pc-reset > div:nth-child(1) > div > div > div > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-12.pc-reset > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-4.pc-reset > div.pencraft.pc-display-flex.pc-minWidth-0.pc-gap-8.pc-alignItems-center.pc-justifyContent-space-between.pc-reset.line-height-20-t4M0El.font-text-qe4AeH.size-15-Psle70.weight-regular-mUq6Gb > div.pencraft.pc-display-flex.pc-gap-6.pc-maxHeight-20.pc-alignItems-center.pc-reset > div")).first
+# Comment / note text element on the navigated note page
+substack_comment_text = page.locator("div[class='pencraft pc-display-flex pc-flexDirection-column pc-gap-12 pc-position-relative pc-reset']").first

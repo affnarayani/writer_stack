@@ -2,52 +2,52 @@ import os
 import sys
 import json
 import time
-import base64
 import random
 import re
+import base64
 import requests
 from pathlib import Path
 from typing import List, Dict, Any
 
 from dotenv import load_dotenv
 
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.exceptions import InvalidTag
-
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 
-
-# =========================
-# CONFIG
-# =========================
-HEADLESS = True
-
-COOKIES_DIR = Path("cookies")
-encrypted_files = list(COOKIES_DIR.glob("*.encrypted"))
-
-if not encrypted_files:
-    raise RuntimeError("❌ No .encrypted cookie files found in 'cookies/' folder")
-
-CHATGPT_COOKIES_FILE = random.choice(encrypted_files)
-print(f"[OK] Randomly selected cookie file: {CHATGPT_COOKIES_FILE.name}", flush=True)
-
-PBKDF2_ITERATIONS = 200_000
-
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-
+from common.config_loader import get
+from common.crypto import load_cookies, get_env_decrypt_key
+from common.locator_loader import resolve_locator, gemini_vision_pass, apply_auto_correct
+from common.screenshot import capture_error_screenshot, upload_to_onlyfiles
 
 # =========================
 # ENV
 # =========================
 load_dotenv()
 
-DECRYPT_KEY = os.getenv("DECRYPT_KEY")
+get_env_decrypt_key()
 
-if not DECRYPT_KEY:
-    raise RuntimeError("DECRYPT_KEY missing")
+# =========================
+# CONFIG (from json/config.json)
+# =========================
+HEADLESS = get("headless", True)
+USER_AGENT = get("user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+CHATGPT_URL = get("chatgpt_url", "https://chatgpt.com/")
+MIN_RANDOM_WAIT = get("min_random_wait", 15)
+MAX_RANDOM_WAIT = get("max_random_wait", 30)
+MIN_RANDOM_WAIT_LONG = get("min_random_wait_long", 30)
+MAX_RANDOM_WAIT_LONG = get("max_random_wait_long", 60)
+MIN_RANDOM_WAIT_SHORT = get("min_random_wait_short", 3)
+MAX_RANDOM_WAIT_SHORT = get("max_random_wait_short", 5)
+PBKDF2_ITERATIONS = get("pbkdf2_iterations", 200000)
+
+COOKIES_DIR = Path("chatgpt_cookies")
+
+ARTICLE_FILE = Path("json/article.json")
+NOTES_FILE = Path("json/notes.json")
+TOPICS_FILE = Path("data/topics.txt")
+LINKS_FILE = Path("data/links.txt")
+
+PLATFORM = "chatgpt"
 
 
 # =========================
@@ -63,6 +63,8 @@ def custom_random_wait(min_sec, max_sec):
 # CRYPTO
 # =========================
 def _derive_key(password: bytes, salt: bytes) -> bytes:
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    from cryptography.hazmat.primitives import hashes
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
@@ -73,39 +75,36 @@ def _derive_key(password: bytes, salt: bytes) -> bytes:
 
 
 def _decrypt_payload(payload: Dict[str, Any], password: str) -> bytes:
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.exceptions import InvalidTag
     salt = base64.b64decode(payload["s"])
     nonce = base64.b64decode(payload["n"])
     ciphertext = base64.b64decode(payload["ct"])
-
     key = _derive_key(password.encode("utf-8"), salt)
     aesgcm = AESGCM(key)
-
     try:
         return aesgcm.decrypt(nonce, ciphertext, None)
     except InvalidTag:
-        raise RuntimeError("❌ Decryption failed (InvalidTag)")
+        raise RuntimeError("Decryption failed (InvalidTag)")
 
 
-def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
+def load_cookies_local(file_path: Path) -> List[Dict[str, Any]]:
     print("[STEP] Loading cookies...", flush=True)
-
     with file_path.open("r", encoding="utf-8") as f:
         payload = json.load(f)
-
-    plaintext = _decrypt_payload(payload, DECRYPT_KEY)
+    decrypt_key = os.getenv("DECRYPT_KEY")
+    if not decrypt_key:
+        raise RuntimeError("DECRYPT_KEY missing")
+    plaintext = _decrypt_payload(payload, decrypt_key)
     cookies = json.loads(plaintext.decode("utf-8"))
-
-    # normalize SameSite and PartitionKey
     for c in cookies:
         if "partitionKey" in c and isinstance(c["partitionKey"], dict):
             if "topLevelSite" in c["partitionKey"]:
                 c["partitionKey"] = str(c["partitionKey"]["topLevelSite"])
             else:
                 del c["partitionKey"]
-
         if "sameSite" in c:
             val = str(c["sameSite"]).lower()
-
             if val in ["no_restriction", "none", "unspecified", "null"]:
                 c["sameSite"] = "None"
             elif val == "lax":
@@ -114,8 +113,7 @@ def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
                 c["sameSite"] = "Strict"
             else:
                 c["sameSite"] = "Lax"
-
-    print("[OK] Cookies loaded", flush=True)
+    print(f"[OK] Cookies loaded ({len(cookies)})", flush=True)
     return cookies
 
 
@@ -123,110 +121,81 @@ def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
 # FILE PARSERS & WRITERS
 # =========================
 def get_last_topic() -> str:
-    print("[STEP] Reading topics.txt...", flush=True)
-    topics_file = Path("topics.txt")
-    if not topics_file.exists():
-        raise FileNotFoundError("❌ 'topics.txt' file nahi mila.")
-    
-    with topics_file.open("r", encoding="utf-8") as f:
+    print("[STEP] Reading data/topics.txt...", flush=True)
+    if not TOPICS_FILE.exists():
+        raise FileNotFoundError("'data/topics.txt' file not found.")
+
+    with TOPICS_FILE.open("r", encoding="utf-8") as f:
         lines = [line.strip() for line in f if line.strip()]
-    
+
     if not lines:
-        raise ValueError("❌ 'topics.txt' khali hai.")
-    
+        raise ValueError("'data/topics.txt' is empty.")
+
     selected_topic = lines[-1]
     print(f"[OK] Selected last topic: '{selected_topic}'", flush=True)
     return selected_topic
 
 
 def get_random_promo_link() -> str:
-    print("[STEP] Reading links.txt...", flush=True)
-    links_file = Path("links.txt")
-    if not links_file.exists():
-        raise FileNotFoundError("❌ 'links.txt' file nahi mila.")
-    
-    with links_file.open("r", encoding="utf-8") as f:
+    print("[STEP] Reading data/links.txt...", flush=True)
+    if not LINKS_FILE.exists():
+        raise FileNotFoundError("'data/links.txt' file not found.")
+
+    with LINKS_FILE.open("r", encoding="utf-8") as f:
         links = [line.strip() for line in f if line.strip()]
-    
+
     if not links:
-        raise ValueError("❌ 'links.txt' khali hai. Promotion ke liye koi link nahi mila.")
-    
+        raise ValueError("'data/links.txt' is empty. No promotion link found.")
+
     selected_link = random.choice(links)
     print(f"[OK] Randomly selected promo link: '{selected_link}'", flush=True)
     return selected_link
 
-def upload_to_onlyfiles(screenshot_path):
-    url = "https://api.onlyfiles.com/v1/upload"
-    
-    with open(screenshot_path, "rb") as file:
-        response = requests.post(url, files={"file": file}, data={"expire": 172800})
-        
-    if response.status_code == 200:
-        res_data = response.json()
-        # onlyfiles API response se direct view URL nikalte hain
-        direct_url = res_data["data"]["file"]["url"]["full"]
-        print(f"👉 DIRECT LINK (Expires in 48 Hours): {direct_url}")
-        return direct_url
-    else:
-        print(f"[WARNING] Upload Failed: {response.status_code}")
-        return None
 
 # =========================
 # MAIN
 # =========================
 def run():
+    apply_auto_correct()
+
     print("[START] Script started", flush=True)
 
-    article_file = Path("article.json")
-    notes_file = Path("notes.json")
+    notes_file = Path("json/notes.json")
 
-    # Fetch topic, promo link, aur article.json ko parse karna
+    # Fetch topic, promo link, and article.json data
     try:
-        # 1. Fetch next topic from topics.txt
         next_article_topic = get_last_topic()
-        
-        # 2. Get promo link
         promo_link = get_random_promo_link()
 
-        # 3. Parse article.json data
-        if not article_file.exists():
-            raise FileNotFoundError("❌ 'article.json' file nahi mili.")
-            
-        with article_file.open("r", encoding="utf-8") as f:
+        if not ARTICLE_FILE.exists():
+            raise FileNotFoundError("'json/article.json' file not found.")
+
+        with ARTICLE_FILE.open("r", encoding="utf-8") as f:
             content_str = f.read().strip()
             if not content_str:
-                raise ValueError("❌ 'article.json' khali hai.")
+                raise ValueError("'json/article.json' is empty.")
             article_data = json.loads(content_str)
 
-        # ====================================================
-        # GUARD CHECK 1: Check if article has been posted
-        # ====================================================
         if article_data.get("posted") != True:
             print("The article has not been posted yet. Notes generation skipped. Exiting.", flush=True)
             sys.exit(0)
-            
-        # ====================================================
-        # GUARD CHECK 2: Check if titles match to prevent duplicate generation
-        # ====================================================
+
         current_article_title = article_data.get('title', next_article_topic)
-        
+
         if notes_file.exists():
             try:
                 with notes_file.open("r", encoding="utf-8") as nf:
                     notes_content = nf.read().strip()
                     if notes_content:
                         notes_data = json.loads(notes_content)
-                        # Agar notes.json ka title aur article.json ka title same hai, toh skip karo
                         if notes_data.get("title") == current_article_title:
-                            print("[SKIP] notes.json already has the same title as article.json. Notes generation skipped. Exiting.", flush=True)
+                            print("[SKIP] json/notes.json already has the same title as json/article.json. Notes generation skipped. Exiting.", flush=True)
                             sys.exit(0)
             except json.JSONDecodeError:
-                # Agar notes.json corrupt ya khali hai, toh check bypass karke normal chalne do
-                print("[INFO] notes.json exists but is empty or invalid JSON. Proceeding...", flush=True)
-        # ====================================================
-            
+                print("[INFO] json/notes.json exists but is empty or invalid JSON. Proceeding...", flush=True)
+
         topic = current_article_title
-        
+
         article = f"""Title: {article_data.get('title', '')}
 Subtitle: {article_data.get('subtitle', '')}
 
@@ -245,20 +214,24 @@ Conclusion:
 Keywords: {', '.join(article_data.get('keywords', []))}"""
 
         print("[OK] Input configurations and article data parsed successfully.", flush=True)
-        
-        # ====================================================
-        # CONSOLE PRINTING REQUIREMENT
-        # ====================================================
+
         print("\n" + "="*60, flush=True)
         print(f"--- NEXT ARTICLE TOPIC ---\n{next_article_topic}\n", flush=True)
         print(f"--- GENERATED ARTICLE ---\n{article}", flush=True)
         print("="*60 + "\n", flush=True)
 
     except Exception as e:
-        print(f"[ERROR] Configurations/Article files read karne me dikkat aayi: {e}", flush=True)
+        print(f"[ERROR] Error reading config/article files: {e}", flush=True)
         sys.exit(1)
 
-    cookies = load_cookies(Path(CHATGPT_COOKIES_FILE))
+    encrypted_files = list(COOKIES_DIR.glob("*.encrypted"))
+    if not encrypted_files:
+        raise RuntimeError("No .encrypted cookie files found in 'chatgpt_cookies/' folder")
+
+    CHATGPT_COOKIES_FILE = random.choice(encrypted_files)
+    print(f"[OK] Randomly selected cookie file: {CHATGPT_COOKIES_FILE.name}", flush=True)
+
+    cookies = load_cookies_local(Path(CHATGPT_COOKIES_FILE))
     print(f"[OK] Total cookies loaded: {len(cookies)}", flush=True)
 
     # =========================
@@ -269,6 +242,7 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
     pw = pw_cm.__enter__()
 
     browser = None
+    page = None
     try:
         browser = pw.chromium.launch(
             headless=HEADLESS,
@@ -291,23 +265,18 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
         print("[OK] Cookies added successfully", flush=True)
 
         print("[STEP] Opening ChatGPT Main URL...", flush=True)
-        page.goto(
-            "https://chatgpt.com/",
-            wait_until="load"
-        )
+        page.goto(CHATGPT_URL, wait_until="load")
         print("[OK] URL opened successfully (Logged In)", flush=True)
 
-        # 15 to 30 seconds random wait after page load
-        custom_random_wait(15, 30)
+        custom_random_wait(MIN_RANDOM_WAIT_SHORT, MAX_RANDOM_WAIT_SHORT)
 
         # ============================================
-        # NEW: CHECK LOGIN SUCCESS VIA USER PROFILE BUTTON
+        # CHECK LOGIN SUCCESS VIA PROFILE BUTTON
         # ============================================
         print("[STEP] Checking login success via profile button...", flush=True)
-        profile_button = page.get_by_role('button', name=list(map(lambda x: x.compile(r'.*Free, open'), [__import__('re')]))[0]).or_(page.get_by_role('button', name='Open profile menu'))
-        
-        if profile_button.count() > 0:
-            print(f"[OK] LOGIN SUCCESS: Profile button found -> '{profile_button.first.get_attribute('aria-label') or 'User Account'}'", flush=True)
+        profile_button = resolve_locator(page, PLATFORM, "chatgpt_profile_button", "Login profile button")
+        if profile_button and profile_button.count() > 0:
+            print(f"[OK] LOGIN SUCCESS: Profile button found", flush=True)
         else:
             print("[WARNING] Profile button not detected directly, proceeding with caution...", flush=True)
 
@@ -315,26 +284,24 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
         # AUTOMATION FLOW (With Textbox Fallbacks)
         # ============================================
         print("[STEP] Locating chat textbox...", flush=True)
-        textbox = page.get_by_role('textbox', name='Chat with ChatGPT').or_(page.get_by_role('textbox', name='Ask ChatGPT'))
-        
-        if textbox.count() == 0:
-            print("[INFO] Fallback 1: Searching for 'Ask anything' paragraph inside textbox context...", flush=True)
-            textbox = page.locator('div[contenteditable="true"]').filter(has=page.locator('p', has_text='Ask anything')).first
-            
-        if textbox.count() == 0:
-            print("[INFO] Fallback 2: Searching via CSS Selector '#prompt-textarea'...", flush=True)
-            textbox = page.locator('#prompt-textarea')
+        textbox = resolve_locator(page, PLATFORM, "chatgpt_textbox", "Chat textbox")
 
-        # Trigger action if found
-        if textbox.count() > 0:
-            textbox.first.click()
-            print("[OK] Textbox located and clicked successfully.", flush=True)
-        else:
-            raise RuntimeError("❌ Textbox locator load nahi ho paya (All strategies failed).")
+        if textbox is None or textbox.count() == 0:
+            suggested = gemini_vision_pass(
+                page, PLATFORM, "chatgpt_textbox",
+                "page.get_by_role('textbox', name='Chat with ChatGPT')",
+                "Locating chat textbox",
+            )
+            print(f"[INFO] Vision pass for textbox: {suggested}", flush=True)
+            if textbox is None:
+                raise RuntimeError("Textbox locator could not be loaded (All strategies failed).")
 
-        custom_random_wait(15, 30)
+        textbox.first.click()
+        print("[OK] Textbox located and clicked successfully.", flush=True)
 
-        # Smart prompt engineering with specific separate paragraph format requirements
+        custom_random_wait(MIN_RANDOM_WAIT_SHORT, MAX_RANDOM_WAIT_SHORT)
+
+        # Smart prompt engineering (UNCHANGED)
         prompt = (
             f"IMPORTANT: Your entire response must be wrapped in a single ```json code block. "
             f"STRICTLY: Do not print any JSON outside of a code block under any circumstances. "
@@ -420,67 +387,70 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
 
         print("[STEP] Entering prompt into textbox...", flush=True)
         textbox.first.fill(prompt)
-        custom_random_wait(15, 30)
+        custom_random_wait(MIN_RANDOM_WAIT_SHORT, MAX_RANDOM_WAIT_SHORT)
 
         print("[STEP] Locating and clicking send button...", flush=True)
-        send_button = page.get_by_test_id('send-button').or_(page.get_by_role('button', name='Send'))
-        send_button.click()
-        
-        # Initial wait taaki generation properly start ho sake
-        custom_random_wait(30, 60)
+        send_button = resolve_locator(page, PLATFORM, "chatgpt_send_button", "Send button")
+        if send_button is None or send_button.count() == 0:
+            suggested = gemini_vision_pass(
+                page, PLATFORM, "chatgpt_send_button",
+                "page.get_by_test_id('send-button')",
+                "Locating send button",
+            )
+            print(f"[INFO] Vision pass for send button: {suggested}", flush=True)
+            if send_button is None:
+                raise RuntimeError("Send button locator could not be loaded (All strategies failed).")
+        send_button.first.click()
+
+        custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
 
         # ============================================
-        # STABLE 15-SECOND POLLING LIVE STREAM CHECK
+        # STABLE POLLING LIVE STREAM CHECK
         # ============================================
-        print("[STEP] Waiting for generated JSON code block to complete writing (15s checks)...", flush=True)
-        code_block_locator = page.locator('#code-block-viewer pre').or_(page.get_by_role('textbox', name='Edit code')).or_(page.get_by_role('code'))
-        
+        print("[STEP] Waiting for generated JSON code block to complete writing...", flush=True)
+        code_block_locator = resolve_locator(page, PLATFORM, "chatgpt_code_block", "JSON code block")
+
         json_content = None
         for attempt in range(1, 6):
             print(f"[STEP] Checking code block locator (Attempt {attempt}/5)...", flush=True)
-            
-            if code_block_locator.count() > 0:
+
+            if code_block_locator and code_block_locator.count() > 0:
                 print("[OK] Code block visible, parsing live text size variations...", flush=True)
-                
+
                 last_length = 0
-                max_check_cycles = 15  # 15 cycles * 15 seconds = Lagbhag 3.7 minutes max wait per attempt
-                
+                max_check_cycles = 15
+
                 for cycle in range(max_check_cycles):
-                    # 15 seconds ka explicit sleep har state capture ke beech me
                     time.sleep(15)
-                    
+
                     current_text = code_block_locator.first.inner_text().strip()
                     current_length = len(current_text)
-                    
+
                     print(f"[STREAM INFO] Cycle {cycle+1}: Previous Length = {last_length}, Current Length = {current_length}", flush=True)
-                    
-                    # Agar text pichle 15 seconds me 1 char bhi nahi badha aur text khali nahi hai
+
                     if current_length > 0 and current_length == last_length:
-                        # Check text ki end JSON complete bracket `}` par ho rahi hai ya nahi
                         if current_text.endswith("}"):
                             json_content = current_text
                             print("[OK] Content generation is fully finished and finalized.", flush=True)
                             break
                         else:
                             print("[WARNING] Text generation paused but JSON bracket '}' is missing. Waiting further...", flush=True)
-                        
+
                     last_length = current_length
-                
+
                 if json_content:
                     break
-            
+
             if attempt < 5:
-                print(f"[WARNING] Code block completely write nahi hua ya block mila nahi. Next retry window...", flush=True)
-                custom_random_wait(30, 60)
+                print(f"[WARNING] Code block not fully written yet. Next retry window...", flush=True)
+                custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
             else:
-                print("❌ Max retries reached. Streaming complete nahi ho payi. Exiting script...", flush=True)
-                if 'page' in locals() and page:
+                print("Max retries reached. Streaming incomplete. Exiting script...", flush=True)
+                if page:
                     try:
-                        screenshot_path = "error_screenshot.png"
-                        page.screenshot(path=screenshot_path, full_page=True)
-                        print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                        
-                        upload_to_onlyfiles(screenshot_path)
+                        screenshot_path = capture_error_screenshot(page)
+                        if screenshot_path:
+                            upload_to_onlyfiles(screenshot_path)
                     except Exception as screenshot_err:
                         print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
                 try:
@@ -497,53 +467,42 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
                     json_content = json_content.split("```json", 1)[1]
                 if json_content.endswith("```"):
                     json_content = json_content.rsplit("```", 1)[0]
-                
+
                 parsed_json = json.loads(json_content.strip())
-                
-                # ====================================================
-                # POST-PROCESSING: CLEAN MULTIPLE NEWLINES & POSTED TAGS
-                # ====================================================
+
                 processed_json = {}
                 for key, value in parsed_json.items():
-                    # AI-generated title key conflict handle protection
                     if key == "title":
                         continue
-                        
+
                     if key.startswith("note") and not key.endswith("_posted"):
                         if isinstance(value, str):
-                            # \n\n ya usse zyada consecutive breaks ko single \n mein transform karna
                             cleaned_value = re.sub(r',\s*\n|\n\s*,', '', value)
                             cleaned_value = re.sub(r'\n+', '\n', cleaned_value)
                             processed_json[key] = cleaned_value
                         else:
                             processed_json[key] = value
-                        
-                        # Har note ke explicit matching posted boolean key add karna
+
                         processed_json[f"{key}_posted"] = False
                     else:
                         processed_json[key] = value
 
-                # ====================================================
-                # MANUALLY APPEND TITLE FROM ARTICLE.JSON (SAFE & CLEAN)
-                # ====================================================
                 final_output = {}
                 final_output["title"] = current_article_title
                 final_output.update(processed_json)
-                
-                print("[STEP] Saving to notes.json with manual title injection...", flush=True)
-                with notes_file.open("w", encoding="utf-8") as f:
+
+                print("[STEP] Saving to json/notes.json with manual title injection...", flush=True)
+                with NOTES_FILE.open("w", encoding="utf-8") as f:
                     json.dump(final_output, f, indent=4, ensure_ascii=False)
-                print("[OK] Notes successfully saved to notes.json with posting tags and clean line breaks", flush=True)
-                
+                print("[OK] Notes successfully saved to json/notes.json with posting tags and clean line breaks", flush=True)
+
             except json.JSONDecodeError as je:
-                print(f"[ERROR] Content JSON parse karne me fail hua: {je}. Exiting script...", flush=True)
-                if 'page' in locals() and page:
+                print(f"[ERROR] Failed to parse content JSON: {je}. Exiting script...", flush=True)
+                if page:
                     try:
-                        screenshot_path = "error_screenshot.png"
-                        page.screenshot(path=screenshot_path, full_page=True)
-                        print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                        
-                        upload_to_onlyfiles(screenshot_path)
+                        screenshot_path = capture_error_screenshot(page)
+                        if screenshot_path:
+                            upload_to_onlyfiles(screenshot_path)
                     except Exception as screenshot_err:
                         print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
                 try:
@@ -552,14 +511,12 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
                     pass
                 sys.exit(1)
         else:
-            print("[ERROR] Save skip kiya gaya kyunki koi data fetch nahi hua. Exiting script...", flush=True)
-            if 'page' in locals() and page:
+            print("[ERROR] Save skipped because no data was fetched. Exiting script...", flush=True)
+            if page:
                 try:
-                    screenshot_path = "error_screenshot.png"
-                    page.screenshot(path=screenshot_path, full_page=True)
-                    print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                    
-                    upload_to_onlyfiles(screenshot_path)
+                    screenshot_path = capture_error_screenshot(page)
+                    if screenshot_path:
+                        upload_to_onlyfiles(screenshot_path)
                 except Exception as screenshot_err:
                     print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
             try:
@@ -568,27 +525,20 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
                 pass
             sys.exit(1)
 
-        # 15 to 30 seconds random wait before closing the browser normally
         print("[STEP] Performing random wait before normal browser closure...", flush=True)
-        custom_random_wait(15, 30)
+        custom_random_wait(MIN_RANDOM_WAIT_SHORT, MAX_RANDOM_WAIT_SHORT)
 
     except SystemExit:
         raise
     except Exception as e:
         print("[ERROR]", e, flush=True)
-        # ============================================
-        # CAPTURE SCREENSHOT ON ERROR
-        # ============================================
-        if 'page' in locals() and page:
+        if page:
             try:
-                screenshot_path = "error_screenshot.png"
-                page.screenshot(path=screenshot_path, full_page=True)
-                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                
-                upload_to_onlyfiles(screenshot_path)
+                screenshot_path = capture_error_screenshot(page)
+                if screenshot_path:
+                    upload_to_onlyfiles(screenshot_path)
             except Exception as screenshot_err:
                 print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
-        # ============================================
         if browser:
             try:
                 browser.close()
@@ -602,12 +552,10 @@ Keywords: {', '.join(article_data.get('keywords', []))}"""
                 browser.close()
             except:
                 pass
-
         try:
             pw_cm.__exit__(None, None, None)
         except:
             pass
-
         print("[DONE] Script finished", flush=True)
 
 

@@ -2,9 +2,9 @@ import os
 import sys
 import json
 import time
-import base64
 import random
 import re
+import base64
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -19,19 +19,36 @@ from cryptography.exceptions import InvalidTag
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 
+from common.config_loader import get
+from common.crypto import load_cookies, get_env_decrypt_key
+from common.locator_loader import resolve_locator, gemini_vision_pass, apply_auto_correct
+from common.screenshot import capture_error_screenshot, upload_to_onlyfiles
 
 # =========================
-# CONFIG
+# ENV
 # =========================
-HEADLESS = True
+load_dotenv()
 
-STACK_COOKIES_FILE = "stack_cookies.json.encrypted"
-STATUS_FILE = "status.json"
-COMMENTED_FILE = "commented.json"  # Path for checked/commented URLs
+get_env_decrypt_key()
 
-PBKDF2_ITERATIONS = 200_000
+# =========================
+# CONFIG (from json/config.json)
+# =========================
+HEADLESS = get("headless", True)
+USER_AGENT = get("user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+PBKDF2_ITERATIONS = get("pbkdf2_iterations", 200000)
+MIN_RANDOM_WAIT = get("min_random_wait", 15)
+MAX_RANDOM_WAIT = get("max_random_wait", 30)
+MIN_RANDOM_WAIT_LONG = get("min_random_wait_long", 30)
+MAX_RANDOM_WAIT_LONG = get("max_random_wait_long", 60)
+MIN_RANDOM_WAIT_SHORT = get("min_random_wait_short", 3)
+MAX_RANDOM_WAIT_SHORT = get("max_random_wait_short", 5)
 
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+STACK_COOKIES_FILE = Path(get("stack_cookies_file", "substack_cookies/stack_cookies.json.encrypted"))
+STATUS_FILE = Path("json/status.json")
+COMMENTED_FILE = Path("json/commented.json")
+
+PLATFORM = "substack"
 
 
 # =========================
@@ -67,16 +84,20 @@ def _decrypt_payload(payload: Dict[str, Any], password: str) -> bytes:
     try:
         return aesgcm.decrypt(nonce, ciphertext, None)
     except InvalidTag:
-        raise RuntimeError("❌ Decryption failed (InvalidTag)")
+        raise RuntimeError("Decryption failed (InvalidTag)")
 
 
-def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
+def load_cookies_local(file_path: Path) -> List[Dict[str, Any]]:
     print("[STEP] Loading cookies...", flush=True)
 
     with file_path.open("r", encoding="utf-8") as f:
         payload = json.load(f)
 
-    plaintext = _decrypt_payload(payload, DECRYPT_KEY)
+    decrypt_key = os.getenv("DECRYPT_KEY")
+    if not decrypt_key:
+        raise RuntimeError("DECRYPT_KEY missing")
+
+    plaintext = _decrypt_payload(payload, decrypt_key)
     cookies = json.loads(plaintext.decode("utf-8"))
 
     for c in cookies:
@@ -106,41 +127,26 @@ def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
 # TEXT CLEANING UTILITY
 # =========================
 def clean_text(text: str) -> str:
-    # Next line (\n aur \r) ko space se replace karna
     text = text.replace("\n", " ").replace("\r", " ")
-    
-    # Emojis ko filter out karne ke liye Regex
+
     emoji_pattern = re.compile(
         "["
-        "\U00010000-\U0010FFFF"  # Extended symbols and pictographs
-        "\u2600-\u27BF"          # Misc symbols & Dingbats
-        "\u2300-\u23FF"          # Misc Technical
+        "\U00010000-\U0010FFFF"
+        "\u2600-\u27BF"
+        "\u2300-\u23FF"
         "]+", flags=re.UNICODE
     )
     text = emoji_pattern.sub(r'', text)
-    
-    # Extra spaces ko single space banana aur trim karna
+
     return " ".join(text.split())
 
-def upload_to_onlyfiles(screenshot_path):
-    url = "https://api.onlyfiles.com/v1/upload"
-    
-    with open(screenshot_path, "rb") as file:
-        response = requests.post(url, files={"file": file}, data={"expire": 172800})
-        
-    if response.status_code == 200:
-        res_data = response.json()
-        direct_url = res_data["data"]["file"]["url"]["full"]
-        print(f"👉 DIRECT LINK (Expires in 48 Hours): {direct_url}")
-        return direct_url
-    else:
-        print(f"[WARNING] Upload Failed: {response.status_code}")
-        return None
 
 # =========================
 # MAIN
 # =========================
 def run():
+    apply_auto_correct()
+
     print("[START] Script started", flush=True)
 
     # =========================
@@ -148,18 +154,17 @@ def run():
     # =========================
     status_path = Path(STATUS_FILE)
     if not status_path.exists():
-        print(f"[CRITICAL] {STATUS_FILE} nahi mila. Exiting.", flush=True)
+        print(f"[CRITICAL] {STATUS_FILE} not found. Exiting.", flush=True)
         sys.exit(1)
-        
-    with open(status_path, "r", encoding="utf-8") as sf:
+
+    with status_path.open("r", encoding="utf-8") as sf:
         status_data = json.load(sf)
-        
-    # Check condition: post_to_comment_found false hona chahiye
+
     if status_data.get("post_to_comment_found") is not False:
-        print("[INFO] 'post_to_comment_found' is already True or not False. Script run nahi hoga.", flush=True)
+        print("[INFO] 'post_to_comment_found' is already True or not False. Script will not run.", flush=True)
         return
 
-    cookies = load_cookies(Path(STACK_COOKIES_FILE))
+    cookies = load_cookies_local(Path(STACK_COOKIES_FILE))
     print(f"[OK] Total cookies loaded: {len(cookies)}", flush=True)
 
     # =========================
@@ -173,7 +178,6 @@ def run():
     page = None
 
     try:
-        # Launch browser with stealth args
         browser = pw.chromium.launch(
             headless=HEADLESS,
             args=[
@@ -182,7 +186,6 @@ def run():
             ]
         )
 
-        # Context instantiation with custom user agent
         context = browser.new_context(
             no_viewport=True,
             user_agent=USER_AGENT
@@ -197,35 +200,30 @@ def run():
 
         print("[STEP] Opening Substack URL...", flush=True)
         page.goto("https://substack.com/", wait_until="load")
-        
-        # 15 to 30 seconds random wait as requested
-        print("[STEP] Initiating post-navigation delay...", flush=True)
-        custom_random_wait(15, 30)
-        
-        # ==================================================
-        # NEW LOCATOR & COPY LINK STRATEGY
-        # ==================================================
-        print("[STEP] Searching strictly for the specified menu target locator...", flush=True)
-        
-        # Specified CSS locator for menu trigger
-        target_locator = page.locator("div").filter(
-            has_text=re.compile(r"^.*Subscribe$")
-        ).get_by_label("More options").or_(
-            page.locator("#reader-nav-page-scroll > div > div > div > div > div > div > div.pencraft.pc-display-flex.pc-paddingTop-24.pc-justifyContent-center.pc-reset.flex-grow-rzmknG > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-paddingBottom-20.pc-reset > div:nth-child(1) > div > div > div > div > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-12.pc-reset > div.pencraft.pc-display-flex.pc-flexDirection-column.pc-gap-4.pc-reset > div.pencraft.pc-display-flex.pc-minWidth-0.pc-gap-8.pc-alignItems-center.pc-justifyContent-space-between.pc-reset.line-height-20-t4M0El.font-text-qe4AeH.size-15-Psle70.weight-regular-mUq6Gb > div.pencraft.pc-display-flex.pc-gap-6.pc-maxHeight-20.pc-alignItems-center.pc-reset > div")
-        ).first
 
-        # Check if the element is visible on the page
-        if not target_locator.is_visible():
+        print("[STEP] Initiating post-navigation delay...", flush=True)
+        custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
+
+        # ==================================================
+        # LOCATOR & COPY LINK STRATEGY
+        # ==================================================
+        print("[STEP] Searching for the specified menu target locator...", flush=True)
+
+        target_locator = resolve_locator(page, PLATFORM, "substack_target_locator", "Subscribe / More options target")
+
+        if target_locator is None or target_locator.count() == 0:
+            suggested = gemini_vision_pass(
+                page, PLATFORM, "substack_target_locator",
+                "page.locator('div').filter(has_text=re.compile(r'^.*Subscribe$'))",
+                "Searching target menu locator",
+            )
+            print(f"[INFO] Vision pass for target locator: {suggested}", flush=True)
             print("[CRITICAL] Specified element not found on the page. Exiting with status 1.", flush=True)
-            if page is not None:
+            if page:
                 try:
-                    screenshot_path = "locator_not_found_screenshot.png"
-                    page.screenshot(path=screenshot_path, full_page=True)
-                    print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                    
-                    upload_to_onlyfiles(screenshot_path)
+                    capture_error_screenshot(page)
                 except Exception as screenshot_err:
-                    print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
+                    print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
             if browser:
                 browser.close()
             sys.exit(1)
@@ -237,8 +235,8 @@ def run():
 
         # Click on 'Copy link' option in the opened dropdown
         print("[STEP] Clicking on 'Copy link' from dropdown...", flush=True)
-        copy_link_btn = page.get_by_role('menuitem', name='Copy link').first
-        if copy_link_btn.is_visible():
+        copy_link_btn = resolve_locator(page, PLATFORM, "substack_copy_link_menuitem", "Copy link menuitem")
+        if copy_link_btn and copy_link_btn.is_visible():
             copy_link_btn.click()
         else:
             print("[CRITICAL] 'Copy link' menuitem not visible. Exiting with status 1.", flush=True)
@@ -262,14 +260,12 @@ def run():
         print(f"[STEP] Navigating to copied link: {copied_link}", flush=True)
         page.goto(copied_link, wait_until="load")
 
-        # Naye page/note page par jane ke baad 15-30 second wait
         print("[STEP] Waiting after navigating to copied link...", flush=True)
-        custom_random_wait(15, 30)
+        custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
 
-        # Navigated page ka URL print karna
         current_url = page.url
         print(f"[NAVIGATED URL] Current Page URL: {current_url}", flush=True)
-        
+
         # ==================================================
         # DUPLICATE URL CHECK FROM COMMENTED.JSON
         # ==================================================
@@ -277,7 +273,7 @@ def run():
         commented_urls = []
         if commented_path.exists():
             try:
-                with open(commented_path, "r", encoding="utf-8") as cf:
+                with commented_path.open("r", encoding="utf-8") as cf:
                     commented_urls = json.load(cf)
                     if not isinstance(commented_urls, list):
                         commented_urls = []
@@ -285,45 +281,40 @@ def run():
                 print(f"[WARNING] commented.json read failed, treating as empty: {e}", flush=True)
 
         if current_url in commented_urls:
-            print(f"[CRITICAL] URL '{current_url}' pehle se hi commented.json mein maujood hai. Skipping append, status won't be True. Exiting with status 1.", flush=True)
+            print(f"[CRITICAL] URL '{current_url}' already present in json/commented.json. Skipping, status won't be True. Exiting with status 1.", flush=True)
             if browser:
                 browser.close()
             sys.exit(1)
-        
+
         # ==================================================
         # FETCH TEXT FROM INSIDE NAVIGATED URL
         # ==================================================
-        print("[STEP] Locating the new comment/text element...", flush=True)
-        
-        comment_locator = page.locator("div[class='pencraft pc-display-flex pc-flexDirection-column pc-gap-12 pc-position-relative pc-reset']").first
+        print("[STEP] Locating the note text element...", flush=True)
 
-        if comment_locator.is_visible():
+        comment_locator = resolve_locator(page, PLATFORM, "substack_comment_text", "Note text element")
+
+        if comment_locator and comment_locator.is_visible():
             raw_text = comment_locator.inner_text()
             print(f"[RAW TEXT] Extracted successfully.", flush=True)
-            
-            # Emojis aur New lines (\n) ko filter out karna
+
             cleaned_content = clean_text(raw_text)
             print(f"[CLEANED TEXT] {cleaned_content}", flush=True)
-            
+
             # ==================================================
             # LENGTH CHECK
             # ==================================================
             text_length = len(cleaned_content)
             if text_length < 120:
                 print(f"[CRITICAL] Extracted text length ({text_length} chars) is less than 120. Skipping and terminating with exit status 1.", flush=True)
-                if page is not None:
+                if page:
                     try:
-                        screenshot_path = "text_too_short_screenshot.png"
-                        page.screenshot(path=screenshot_path, full_page=True)
-                        print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                        
-                        upload_to_onlyfiles(screenshot_path)
+                        capture_error_screenshot(page)
                     except Exception as screenshot_err:
-                        print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
+                        print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
                 if browser:
                     browser.close()
                 sys.exit(1)
-            
+
             # ==================================================
             # USERNAME TOP 100 CHECK AGAINST COMMENTED.JSON
             # ==================================================
@@ -331,7 +322,7 @@ def run():
             extracted_username = username_match.group(1).lower() if username_match else None
 
             top_100_urls = commented_urls[:100]
-            
+
             username_found_in_top_100 = False
             if extracted_username:
                 for link in top_100_urls:
@@ -341,51 +332,47 @@ def run():
                         break
 
             if username_found_in_top_100:
-                print(f"[INFO] Username '{extracted_username}' found in the top 100 of commented.json. Executing hide/snooze flow...", flush=True)
+                print(f"[INFO] Username '{extracted_username}' found in the top 100 of json/commented.json. Executing hide/snooze flow...", flush=True)
                 try:
-                    # 1. Page ko back karo
                     print("[STEP] Navigating back to the previous page...", flush=True)
                     page.go_back(wait_until="domcontentloaded")
-                    
-                    # 2. 15 se 30 seconds random wait
+
                     print("[STEP] Waiting 15-30 seconds after going back...", flush=True)
-                    custom_random_wait(15, 30)
-                    
-                    # 3. 'More options' button ko locate karein
+                    custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
+
                     print("[STEP] Checking for 'More options' button...", flush=True)
-                    more_options_btn = page.get_by_role("button", name="More options").first
-                    
-                    if more_options_btn.is_visible():
+                    more_options_btn = resolve_locator(page, PLATFORM, "substack_more_options_button", "More options button")
+
+                    if more_options_btn and more_options_btn.is_visible():
                         print("[OK] 'More options' button found. Clicking it...", flush=True)
                         more_options_btn.click()
-                        
-                        # 4. 3 se 6 seconds random wait
+
                         print("[STEP] Waiting 3-6 seconds...", flush=True)
                         time.sleep(random.uniform(3, 6))
-                        
-                        # 5. Dropdown se 'Hide note' menu item par click karo
+
                         print("[STEP] Clicking 'Hide note' from menu...", flush=True)
-                        page.get_by_role("menuitem", name="Hide note").click()
-                        
-                        # 6. 6 se 12 seconds random wait
+                        hide_note = resolve_locator(page, PLATFORM, "substack_hide_note_menuitem", "Hide note menuitem")
+                        if hide_note:
+                            hide_note.click()
+
                         print("[STEP] Waiting 6-12 seconds...", flush=True)
                         time.sleep(random.uniform(6, 12))
-                        
-                        # 7. Dynamic text wale 'Snooze ... for 30 days' par click karo
+
                         print("[STEP] Clicking snooze option for 30 days...", flush=True)
-                        page.locator('div').filter(has_text=re.compile(r"^Snooze .+ for 30 days$")).first.click()
-                        
-                        # 8. Final 6 se 12 seconds random wait
+                        snooze = resolve_locator(page, PLATFORM, "substack_snooze_option", "Snooze 30 days option")
+                        if snooze:
+                            snooze.click()
+
                         print("[STEP] Final wait before closing browser (6-12 seconds)...", flush=True)
                         time.sleep(random.uniform(6, 12))
-                        
+
                         print("[OK] All steps completed successfully.", flush=True)
                     else:
                         print("[WARNING] Locator 'More options' button not found on the page.", flush=True)
-                    
+
                 except Exception as flow_err:
                     print(f"[WARNING] Error during navigation/snooze flow: {flow_err}", flush=True)
-                
+
                 if browser:
                     browser.close()
                 sys.exit(1)
@@ -397,26 +384,26 @@ def run():
                 status_data["post_to_comment_found"] = True
                 status_data["link_to_post_to_comment"] = current_url
                 status_data["content_of_post_to_comment"] = cleaned_content
-                
-                with open(status_path, "w", encoding="utf-8") as sf:
+
+                with status_path.open("w", encoding="utf-8") as sf:
                     json.dump(status_data, sf, indent=4, ensure_ascii=False)
-                    
-                print("[OK] status.json updated successfully with new details.", flush=True)
-            
+
+                print("[OK] json/status.json updated successfully with new details.", flush=True)
+
         else:
-            print("[WARNING] New text element was not visible on the page. status.json not updated.", flush=True)
-            try:
-                screenshot_path = "comment_element_not_found.png"
-                page.screenshot(path=screenshot_path, full_page=True)
-                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)    
-                upload_to_onlyfiles(screenshot_path)
-                sys.exit(1)
-            except Exception as screenshot_err:
-                print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
-        
-        # Final wait browser close karne se pehle (15 to 30 seconds)
+            print("[WARNING] Note text element was not visible on the page. status.json not updated.", flush=True)
+            if page:
+                try:
+                    capture_error_screenshot(page)
+                except Exception as screenshot_err:
+                    print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
+            if browser:
+                browser.close()
+            sys.exit(1)
+
+        # Final wait before browser close
         print("[STEP] Initiating final post-execution delay...", flush=True)
-        custom_random_wait(15, 30)
+        custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
 
         print("[SUCCESS] Navigation completed successfully. Closing browser.", flush=True)
 
@@ -424,18 +411,13 @@ def run():
         raise
     except Exception as e:
         print("[ERROR] Script execution broke down due to trace:", e, flush=True)
-        
-        # CAPTURE SCREENSHOT ON ERROR
-        if 'page' in locals() and page:
+
+        if page:
             try:
-                screenshot_path = "error_screenshot.png"
-                page.screenshot(path=screenshot_path, full_page=True)
-                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                
-                upload_to_onlyfiles(screenshot_path)
+                capture_error_screenshot(page)
             except Exception as screenshot_err:
-                print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
-        
+                print(f"[WARNING] Could not capture screenshot: {screenshot_err}", flush=True)
+
         if browser:
             try:
                 browser.close()
@@ -444,7 +426,6 @@ def run():
         sys.exit(1)
 
     finally:
-        # CLEAN ENVIRONMENT TEARDOWN
         if browser:
             try:
                 browser.close()

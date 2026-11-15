@@ -2,36 +2,49 @@ import os
 import sys
 import json
 import time
-import base64
 import random
+import base64
 import requests
 from pathlib import Path
 from typing import List, Dict, Any
 
 from dotenv import load_dotenv
 
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-from cryptography.exceptions import InvalidTag
-
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 
+from common.config_loader import get
+from common.crypto import load_cookies, get_env_decrypt_key
+from common.locator_loader import resolve_locator, gemini_vision_pass, apply_auto_correct
+from common.screenshot import capture_error_screenshot, upload_to_onlyfiles
 
 # =========================
-# CONFIG
+# ENV
 # =========================
-HEADLESS = True
+load_dotenv()
+
+get_env_decrypt_key()
+
+# =========================
+# CONFIG (from json/config.json)
+# =========================
+HEADLESS = get("headless", True)
+USER_AGENT = get("user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+PBKDF2_ITERATIONS = get("pbkdf2_iterations", 200000)
+MIN_RANDOM_WAIT = get("min_random_wait", 15)
+MAX_RANDOM_WAIT = get("max_random_wait", 30)
+MIN_RANDOM_WAIT_LONG = get("min_random_wait_long", 30)
+MAX_RANDOM_WAIT_LONG = get("max_random_wait_long", 60)
+MIN_RANDOM_WAIT_SHORT = get("min_random_wait_short", 3)
+MAX_RANDOM_WAIT_SHORT = get("max_random_wait_short", 5)
+
 ENABLE_LIKE = False
 
-SUBSTACK_COOKIES_FILE = "stack_cookies.json.encrypted"
-STATUS_JSON_FILE = "status.json"
-COMMENTED_JSON_FILE = "commented.json"
+SUBSTACK_COOKIES_FILE = Path(get("stack_cookies_file", "substack_cookies/stack_cookies.json.encrypted"))
+STATUS_JSON_FILE = Path("json/status.json")
+COMMENTED_JSON_FILE = Path("json/commented.json")
 
-PBKDF2_ITERATIONS = 200_000
-
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+PLATFORM = "substack"
 
 
 # =========================
@@ -47,6 +60,8 @@ def custom_random_wait(min_sec=5, max_sec=10):
 # CRYPTO
 # =========================
 def _derive_key(password: bytes, salt: bytes) -> bytes:
+    from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+    from cryptography.hazmat.primitives import hashes
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
@@ -57,26 +72,30 @@ def _derive_key(password: bytes, salt: bytes) -> bytes:
 
 
 def _decrypt_payload(payload: Dict[str, Any], password: str) -> bytes:
+    from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+    from cryptography.exceptions import InvalidTag
     salt = base64.b64decode(payload["s"])
     nonce = base64.b64decode(payload["n"])
     ciphertext = base64.b64decode(payload["ct"])
-
     key = _derive_key(password.encode("utf-8"), salt)
     aesgcm = AESGCM(key)
-
     try:
         return aesgcm.decrypt(nonce, ciphertext, None)
     except InvalidTag:
-        raise RuntimeError("❌ Decryption failed (InvalidTag)")
+        raise RuntimeError("Decryption failed (InvalidTag)")
 
 
-def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
+def load_cookies_local(file_path: Path) -> List[Dict[str, Any]]:
     print("[STEP] Loading cookies...", flush=True)
 
     with file_path.open("r", encoding="utf-8") as f:
         payload = json.load(f)
 
-    plaintext = _decrypt_payload(payload, DECRYPT_KEY)
+    decrypt_key = os.getenv("DECRYPT_KEY")
+    if not decrypt_key:
+        raise RuntimeError("DECRYPT_KEY missing")
+
+    plaintext = _decrypt_payload(payload, decrypt_key)
     cookies = json.loads(plaintext.decode("utf-8"))
 
     for c in cookies:
@@ -103,35 +122,11 @@ def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
 
 
 # =========================
-# ENV VALIDATION
-# =========================
-load_dotenv()
-
-DECRYPT_KEY = os.getenv("DECRYPT_KEY")
-
-if not DECRYPT_KEY:
-    raise RuntimeError("DECRYPT_KEY missing")
-
-def upload_to_onlyfiles(screenshot_path):
-    url = "https://api.onlyfiles.com/v1/upload"
-    
-    with open(screenshot_path, "rb") as file:
-        response = requests.post(url, files={"file": file}, data={"expire": 172800})
-        
-    if response.status_code == 200:
-        res_data = response.json()
-        # onlyfiles API response se direct view URL nikalte hain
-        direct_url = res_data["data"]["file"]["url"]["full"]
-        print(f"👉 DIRECT LINK (Expires in 48 Hours): {direct_url}")
-        return direct_url
-    else:
-        print(f"[WARNING] Upload Failed: {response.status_code}")
-        return None
-
-# =========================
 # MAIN
 # =========================
 def run():
+    apply_auto_correct()
+
     print("[START] Script started", flush=True)
 
     # ========================================================
@@ -139,7 +134,7 @@ def run():
     # ========================================================
     status_path = Path(STATUS_JSON_FILE)
     if not status_path.exists():
-        raise FileNotFoundError(f"❌ Status file {STATUS_JSON_FILE} not found!")
+        raise FileNotFoundError(f"Status file {STATUS_JSON_FILE} not found!")
 
     with status_path.open("r", encoding="utf-8") as sf:
         status_data = json.load(sf)
@@ -148,7 +143,6 @@ def run():
     comment_to_post = status_data.get("comment")
     target_url = status_data.get("link_to_post_to_comment")
 
-    # Condition: "comment_generated" must be true AND "comment" key must not be empty
     if not (comment_gen is True and comment_to_post and str(comment_to_post).strip() != ""):
         print("[EXIT] Script will not run: 'comment_generated' is not True or 'comment' is empty.", flush=True)
         sys.exit(0)
@@ -157,8 +151,7 @@ def run():
         print("[ERROR] Substack URL missing in status.json.", flush=True)
         sys.exit(1)
 
-    # Cookies setup
-    cookies = load_cookies(Path(SUBSTACK_COOKIES_FILE))
+    cookies = load_cookies_local(Path(SUBSTACK_COOKIES_FILE))
     print(f"[OK] Total cookies loaded: {len(cookies)}", flush=True)
 
     # =========================
@@ -196,16 +189,15 @@ def run():
         print(f"[STEP] Navigating directly to Substack post URL: {target_url}...", flush=True)
         page.goto(target_url, wait_until="domcontentloaded")
         print(f"[OK] {target_url} opened completely", flush=True)
-        
-        # 1. URL par navigate hone ke baad 15, 30 seconds ka random wait
-        custom_random_wait(15, 30)
+
+        custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
 
         # ========================================================
         # CHECK IF NOTE IS UNAVAILABLE
         # ========================================================
-        unavailable_locator = page.get_by_text("This note is not available")
-        
-        if unavailable_locator.is_visible(timeout=3000):
+        unavailable_locator = resolve_locator(page, PLATFORM, "substack_note_unavailable", "Note unavailable message")
+
+        if unavailable_locator and unavailable_locator.is_visible(timeout=3000):
             print("[INFO] 'This note is not available' detected. Skipping comment/like steps and jumping to cleanup...", flush=True)
         else:
             # ========================================================
@@ -215,58 +207,56 @@ def run():
             # 2. Optional Like Step Check
             if ENABLE_LIKE:
                 print("[STEP] Like functionality enabled. Locating main post like button...", flush=True)
-                like_selector = "div[class='pencraft pc-display-flex pc-justifyContent-space-between pc-alignItems-center pc-paddingBottom-8 pc-reset'] button[aria-label='Like']"
-                like_btn = page.locator(like_selector).first
-                
-                # Wait and click with strict locator checks
-                like_btn.wait_for(state="visible", timeout=15000)
-                like_btn.click()
-                print("[OK] Main post like button clicked successfully.", flush=True)
+                like_btn = resolve_locator(page, PLATFORM, "substack_like_button", "Post like button")
+                if like_btn:
+                    like_btn.first.wait_for(state="visible", timeout=15000)
+                    like_btn.first.click()
+                    print("[OK] Main post like button clicked successfully.", flush=True)
 
-                # 3. Wait 3, 6 seconds random after like
-                custom_random_wait(3, 6)
+                custom_random_wait(MIN_RANDOM_WAIT_SHORT, MAX_RANDOM_WAIT_SHORT)
             else:
                 print("[INFO] Like functionality disabled via configurations. Skipping like step...", flush=True)
 
             # 4. Find and click 'New post' button
             print("[STEP] Locating and clicking 'New post' button...", flush=True)
-            new_post_btn = page.get_by_role('button', name='New post')
-            new_post_btn.wait_for(state="visible", timeout=15000)
-            new_post_btn.click()
-            print("[OK] 'New post' clicked.", flush=True)
+            new_post_btn = resolve_locator(page, PLATFORM, "substack_new_post_button", "New post button")
+            if new_post_btn:
+                new_post_btn.first.wait_for(state="visible", timeout=15000)
+                new_post_btn.first.click()
+                print("[OK] 'New post' clicked.", flush=True)
 
-            # 5. Again 15, 30 seconds ka random wait
-            custom_random_wait(15, 30)
+            # 5. Again random wait
+            custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
 
             # 6. Dynamic Class Selector for text input editor container
             print("[STEP] Locating dynamic text editor input container...", flush=True)
-            editor_selector = "div[class^='pencraft pc-display-flex pc-flexDirection-column pc-reset textEditor-']"
-            input_field = page.locator(editor_selector).first
-            
-            input_field.wait_for(state="visible", timeout=15000)
-            input_field.click()
-            print("[OK] Dynamic text editor field clicked & focused.", flush=True)
+            input_field = resolve_locator(page, PLATFORM, "substack_comment_editor", "Comment editor input")
+            if input_field:
+                input_field.first.wait_for(state="visible", timeout=15000)
+                input_field.first.click()
+                print("[OK] Dynamic text editor field clicked & focused.", flush=True)
 
-            # 7. 3, 6 seconds random wait
-            custom_random_wait(3, 6)
+            # 7. random wait
+            custom_random_wait(MIN_RANDOM_WAIT_SHORT, MAX_RANDOM_WAIT_SHORT)
 
             # 8. Start typing comment like a human
             print("[STEP] Typing comment via native keyboard emulation...", flush=True)
             for char in comment_to_post:
                 page.keyboard.type(char)
                 time.sleep(random.uniform(0.04, 0.09))
-                
+
             print("[OK] Typing completed.", flush=True)
 
-            # 9. Jab comment type ho jaaye to 3, 6 seconds random wait kare
-            custom_random_wait(3, 6)
+            # 9. random wait
+            custom_random_wait(MIN_RANDOM_WAIT_SHORT, MAX_RANDOM_WAIT_SHORT)
 
             # 10. Click 'composer-post' button
             print("[STEP] Clicking 'composer-post' submit button...", flush=True)
-            submit_btn = page.get_by_test_id('composer-post')
-            submit_btn.wait_for(state="visible", timeout=15000)
-            submit_btn.click()
-            print("[OK] Comment submitted successfully!", flush=True)
+            submit_btn = resolve_locator(page, PLATFORM, "substack_composer_post_button", "Composer post button")
+            if submit_btn:
+                submit_btn.first.wait_for(state="visible", timeout=15000)
+                submit_btn.first.click()
+                print("[OK] Comment submitted successfully!", flush=True)
 
         # ========================================================
         # HISTORY UPDATE (APPEND TO TOP)
@@ -297,32 +287,26 @@ def run():
         status_data["content_of_post_to_comment"] = ""
         status_data["comment_generated"] = False
         status_data["comment"] = ""
-        
+
         with status_path.open("w", encoding="utf-8") as sf:
             json.dump(status_data, sf, indent=4)
         print("[OK] status.json reset complete.", flush=True)
 
-        # 11. Wait 30, 60 seconds before browser close
+        # 11. Wait before browser close
         print("[STEP] Final hold before closing browser context...", flush=True)
-        custom_random_wait(30, 60)
+        custom_random_wait(MIN_RANDOM_WAIT_LONG, MAX_RANDOM_WAIT_LONG)
 
     except SystemExit:
         raise
     except Exception as e:
         print("[CRITICAL ERROR] Automation pipeline failed or locator timed out:", e, flush=True)
-        # ============================================
-        # CAPTURE SCREENSHOT ON ERROR WITH IMGBB UPLOAD
-        # ============================================
         if 'page' in locals() and page:
             try:
-                screenshot_path = "error_screenshot.png"
-                page.screenshot(path=screenshot_path, full_page=True)
-                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                
-                upload_to_onlyfiles(screenshot_path)
+                screenshot_path = capture_error_screenshot(page)
+                if screenshot_path:
+                    upload_to_onlyfiles(screenshot_path)
             except Exception as screenshot_err:
                 print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
-        # ============================================
         sys.exit(1)
 
     finally:

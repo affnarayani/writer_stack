@@ -4,7 +4,7 @@ import json
 import time
 import base64
 import random
-import re  # <-- Regular expression ke liye import kiya gaya hai
+import re
 from pathlib import Path
 from typing import List, Dict, Any
 
@@ -19,27 +19,33 @@ from cryptography.exceptions import InvalidTag
 from playwright.sync_api import sync_playwright
 from playwright_stealth import Stealth
 
-
-# =========================
-# CONFIG
-# =========================
-HEADLESS = True
-
-STACK_COOKIES_FILE = "stack_cookies.json.encrypted"
-PBKDF2_ITERATIONS = 200_000
-
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-
+from common.config_loader import get
+from common.crypto import load_cookies, get_env_decrypt_key
+from common.locator_loader import resolve_locator, gemini_vision_pass, apply_auto_correct
+from common.screenshot import capture_error_screenshot, upload_to_onlyfiles
 
 # =========================
 # ENV
 # =========================
 load_dotenv()
 
-DECRYPT_KEY = os.getenv("DECRYPT_KEY")
+get_env_decrypt_key()
 
-if not DECRYPT_KEY:
-    raise RuntimeError("DECRYPT_KEY missing")
+# =========================
+# CONFIG (from json/config.json)
+# =========================
+HEADLESS = get("headless", True)
+USER_AGENT = get("user_agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+SUBSTACK_URL = get("substack_url", "https://substack.com/")
+PBKDF2_ITERATIONS = get("pbkdf2_iterations", 200000)
+MIN_RANDOM_WAIT = get("min_random_wait", 15)
+MAX_RANDOM_WAIT = get("max_random_wait", 30)
+MIN_RANDOM_WAIT_SHORT = get("min_random_wait_short", 3)
+MAX_RANDOM_WAIT_SHORT = get("max_random_wait_short", 5)
+
+STACK_COOKIES_FILE = Path(get("stack_cookies_file", "substack_cookies/stack_cookies.json.encrypted"))
+
+PLATFORM = "substack"
 
 
 # =========================
@@ -81,16 +87,20 @@ def _decrypt_payload(payload: Dict[str, Any], password: str) -> bytes:
     try:
         return aesgcm.decrypt(nonce, ciphertext, None)
     except InvalidTag:
-        raise RuntimeError("❌ Decryption failed (InvalidTag)")
+        raise RuntimeError("Decryption failed (InvalidTag)")
 
 
-def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
+def load_cookies_local(file_path: Path) -> List[Dict[str, Any]]:
     print("[STEP] Loading cookies...", flush=True)
 
     with file_path.open("r", encoding="utf-8") as f:
         payload = json.load(f)
 
-    plaintext = _decrypt_payload(payload, DECRYPT_KEY)
+    decrypt_key = os.getenv("DECRYPT_KEY")
+    if not decrypt_key:
+        raise RuntimeError("DECRYPT_KEY missing")
+
+    plaintext = _decrypt_payload(payload, decrypt_key)
     cookies = json.loads(plaintext.decode("utf-8"))
 
     for c in cookies:
@@ -115,32 +125,35 @@ def load_cookies(file_path: Path) -> List[Dict[str, Any]]:
     print("[OK] Cookies loaded", flush=True)
     return cookies
 
-def upload_to_onlyfiles(screenshot_path):
+
+def upload_to_onlyfiles_local(screenshot_path):
     url = "https://api.onlyfiles.com/v1/upload"
-    
+
     with open(screenshot_path, "rb") as file:
         response = requests.post(url, files={"file": file}, data={"expire": 172800})
-        
+
     if response.status_code == 200:
         res_data = response.json()
-        # onlyfiles API response se direct view URL nikalte hain
         direct_url = res_data["data"]["file"]["url"]["full"]
-        print(f"👉 DIRECT LINK (Expires in 48 Hours): {direct_url}")
+        print(f"DIRECT LINK (Expires in 48 Hours): {direct_url}")
         return direct_url
     else:
         print(f"[WARNING] Upload Failed: {response.status_code}")
         return None
 
+
 # =========================
 # MAIN
 # =========================
 def run():
+    apply_auto_correct()
+
     print("[START] Script started", flush=True)
 
     # ===================================================
     # 1. ARTICLE & NOTE PRE-CHECKS
     # ===================================================
-    article_path = Path("article.json")
+    article_path = Path("json/article.json")
     if not article_path.exists():
         print(f"[ERROR] {article_path.name} not found. Exiting.", flush=True)
         sys.exit(0)
@@ -156,7 +169,7 @@ def run():
         print("The article has not been posted yet.", flush=True)
         sys.exit(0)
 
-    notes_path = Path("notes.json")
+    notes_path = Path("json/notes.json")
     if not notes_path.exists():
         print(f"[ERROR] {notes_path.name} not found. Exiting.", flush=True)
         sys.exit(1)
@@ -168,18 +181,17 @@ def run():
         print(f"[ERROR] Failed to read {notes_path.name}: {e}", flush=True)
         sys.exit(1)
 
-    # Sequence me check karega jo note posted false hai use pick karega
     target_note_key = None
     target_note_text = None
-    
+
     idx = 1
     while True:
         note_key = f"note{idx}"
         status_key = f"{note_key}_posted"
-        
+
         if note_key not in notes_data:
             break
-            
+
         if notes_data.get(status_key) is False:
             target_note_key = note_key
             target_note_text = notes_data[note_key]
@@ -192,8 +204,7 @@ def run():
 
     print(f"[INFO] Target unposted note identified: {target_note_key}", flush=True)
 
-    # Cookies load logic
-    cookies = load_cookies(Path(STACK_COOKIES_FILE))
+    cookies = load_cookies_local(Path(STACK_COOKIES_FILE))
     print(f"[OK] Total cookies loaded: {len(cookies)}", flush=True)
 
     # =========================
@@ -225,31 +236,30 @@ def run():
         print("[OK] Cookies added successfully", flush=True)
 
         print("[STEP] Opening Substack URL...", flush=True)
-        page.goto(
-            "https://substack.com/@ujjawalkumar",
-            wait_until="load"
-        )
+        page.goto(SUBSTACK_URL, wait_until="load")
         print("[OK] Substack URL opened completely (Logged In)", flush=True)
-        custom_random_wait(6, 12)
-        
+        custom_random_wait(MIN_RANDOM_WAIT_SHORT, MAX_RANDOM_WAIT_SHORT)
+
         # ===================================================
         # NOTE CREATION, SIMULATED TYPING & POST FLOW
         # ===================================================
         print("[STEP] Clicking 'Create' button to open dropdown...", flush=True)
-        create_selector = page.get_by_role('button', name='Create', exact=True).or_(page.get_by_text('Create', exact=True))
-        create_selector.first.click()
+        create_selector = resolve_locator(page, PLATFORM, "substack_create_button", "Create button")
+        if create_selector:
+            create_selector.first.click()
         custom_random_wait(2, 4)
 
         print("[STEP] Clicking 'Note' menuitem from the dropdown...", flush=True)
-        page.get_by_role('menuitem', name='Note').click()
-        
+        note_menuitem = resolve_locator(page, PLATFORM, "substack_note_menuitem", "Note menuitem")
+        if note_menuitem:
+            note_menuitem.first.click()
+
         # Pop up modal wait and focus
-        modal = page.get_by_test_id('modal')
-        modal.wait_for(state="visible")
-        
-        # ---------------------------------------------------
-        # UPDATE: PARAGRAPH KI JAGAH NAYA DIV LOCATOR INTERACT KAR RAHA HAI
-        # ---------------------------------------------------
+        modal = resolve_locator(page, PLATFORM, "substack_note_modal", "Note modal")
+        if modal:
+            modal.first.wait_for(state="visible")
+
+        # Note text input inside the modal
         target_input = modal.locator('div').filter(has_text=re.compile(r"^Drop file here to upload$")).first
         target_input.click()
         custom_random_wait(1, 3)
@@ -260,13 +270,11 @@ def run():
         for i, line in enumerate(lines):
             for char in line:
                 target_input.type(char)
-                time.sleep(random.uniform(0.02, 0.07))  # Human delay per char
-            
-            # Agar multiple lines hain toh line khatam hone par enter send karein
+                time.sleep(random.uniform(0.02, 0.07))
+
             if i < len(lines) - 1:
                 target_input.press("Enter")
                 time.sleep(random.uniform(0.2, 0.5))
-        # ---------------------------------------------------
 
         # Wait for random 15-30 seconds before final post
         wait_before_post = random.uniform(15, 30)
@@ -287,8 +295,7 @@ def run():
 
         # local tracking file updates
         notes_data[f"{target_note_key}_posted"] = True
-        
-        # Check if any unposted note is left inside notes.json
+
         any_false_remains = False
         chk_idx = 1
         while True:
@@ -301,24 +308,19 @@ def run():
                 break
             chk_idx += 1
 
-        # Write data back seamlessly
         with notes_path.open("w", encoding="utf-8") as f:
             json.dump(notes_data, f, indent=4, ensure_ascii=False)
-        print("[OK] Track record updated inside notes.json", flush=True)
+        print("[OK] Track record updated inside json/notes.json", flush=True)
 
-        # Side Note Condition validation
         if not any_false_remains:
-            print("[INFO] No unposted notes left. Clearing 'posted' key from article.json...", flush=True)
+            print("[INFO] No unposted notes left. Clearing 'posted' key from json/article.json...", flush=True)
             if "posted" in article_data:
                 del article_data["posted"]
-            
+
             with article_path.open("w", encoding="utf-8") as f:
                 json.dump(article_data, f, indent=4, ensure_ascii=False)
-            print("[OK] Cleaned and saved article.json perfectly without syntax anomalies", flush=True)
+            print("[OK] Cleaned and saved json/article.json perfectly without syntax anomalies", flush=True)
 
-        # =========================
-        # EXIT DELAY
-        # =========================
         print("[STEP] Initiating final wait before closing...", flush=True)
         exit_delay_wait()
 
@@ -326,19 +328,13 @@ def run():
         raise
     except Exception as e:
         print("[ERROR] Automation cycle broke due to runtime trace:", e, flush=True)
-        # ============================================
-        # NEW: CAPTURE SCREENSHOT ON ERROR
-        # ============================================
         if 'page' in locals() and page:
             try:
-                screenshot_path = "error_screenshot.png"
-                page.screenshot(path=screenshot_path, full_page=True)
-                print(f"[OK] Error screenshot captured: {screenshot_path}", flush=True)
-                
-                upload_to_onlyfiles(screenshot_path)
+                screenshot_path = capture_error_screenshot(page)
+                if screenshot_path:
+                    upload_to_onlyfiles_local(screenshot_path)
             except Exception as screenshot_err:
                 print(f"[WARNING] Could not capture or upload screenshot: {screenshot_err}", flush=True)
-        # ============================================
         sys.exit(1)
 
     finally:
