@@ -512,8 +512,17 @@ def run():
                     if tags_input is None or tags_input.count() == 0:
                         raise RuntimeError("Tags combobox locator could not be loaded (All strategies failed).")
 
-            tags_input.first.wait_for(state="visible")
-            tags_input.first.click()
+            try:
+                tags_input.first.wait_for(state="visible", timeout=10000)
+                tags_input.first.click(force=True)
+            except Exception:
+                for _ in range(4):
+                    page.keyboard.press("Tab")
+                    custom_random_wait(0.3, 0.6)
+                tags_input = resolve_locator(page, PLATFORM, "substack_tags_combobox", "Tags combobox")
+                if tags_input is None or tags_input.count() == 0:
+                    raise RuntimeError("Tags combobox locator could not be loaded (All strategies failed).")
+                tags_input.first.click(force=True)
             custom_random_wait(1, 2)
 
             for index, kw in enumerate(chosen_keywords, start=1):
