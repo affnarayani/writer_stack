@@ -95,7 +95,7 @@ def load_cookies_local(file_path: Path) -> List[Dict[str, Any]]:
     if not decrypt_key:
         raise RuntimeError("DECRYPT_KEY missing")
     plaintext = _decrypt_payload(payload, decrypt_key)
-    cookies = _json.loads(plaintext.decode("utf-8"))
+    cookies = json.loads(plaintext.decode("utf-8"))
     for c in cookies:
         if "partitionKey" in c and isinstance(c["partitionKey"], dict):
             if "topLevelSite" in c["partitionKey"]:
