@@ -500,12 +500,17 @@ def run():
             print("[STEP] Locating 'Select or create tags' tags combobox input...", flush=True)
             tags_input = resolve_locator(page, PLATFORM, "substack_tags_combobox", "Tags combobox")
             if tags_input is None or tags_input.count() == 0:
-                suggested = gemini_vision_pass(page, PLATFORM, "substack_tags_combobox",
-                    "page.get_by_role('combobox', name='Select or create tags')",
-                    "Locating tags combobox")
-                print(f"[INFO] Vision pass for tags combobox: {suggested}", flush=True)
+                for _ in range(4):
+                    page.keyboard.press("Tab")
+                    custom_random_wait(0.3, 0.6)
+                tags_input = resolve_locator(page, PLATFORM, "substack_tags_combobox", "Tags combobox")
                 if tags_input is None or tags_input.count() == 0:
-                    raise RuntimeError("Tags combobox locator could not be loaded (All strategies failed).")
+                    suggested = gemini_vision_pass(page, PLATFORM, "substack_tags_combobox",
+                        "page.get_by_role('combobox', name='Select or create tags')",
+                        "Locating tags combobox")
+                    print(f"[INFO] Vision pass for tags combobox: {suggested}", flush=True)
+                    if tags_input is None or tags_input.count() == 0:
+                        raise RuntimeError("Tags combobox locator could not be loaded (All strategies failed).")
 
             tags_input.first.wait_for(state="visible")
             tags_input.first.click()
